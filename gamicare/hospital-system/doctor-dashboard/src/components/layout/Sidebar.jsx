@@ -33,8 +33,8 @@ const Sidebar = () => {
             <Stethoscope className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="font-bold text-lg text-white">MedCare</h1>
-            <p className="text-sm text-[#16C79A]/80">Doctor Dashboard</p>
+            <h1 className="font-bold text-lg text-white"> Swami Dayanand Hospital</h1>
+            <p className="text-sm text-[#16C79A]/80">Doctor Management Portal</p>
           </div>
         </div>
       </div>

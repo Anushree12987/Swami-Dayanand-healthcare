@@ -17,17 +17,19 @@ const Footer = () => {
                 </svg>
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-800">ShifoOnline</h2>
-                <p className="text-sm text-blue-600">Advanced Hospital Management</p>
+                <h2 className="text-xl font-bold text-gray-800">Swami Dayanand</h2>
+                <p className="text-sm text-blue-600">Government Healthcare Management System</p>
               </div>
             </div>
             <p className="text-gray-600 mb-4">
-              A comprehensive hospital management system designed to streamline 
-              medical operations and enhance patient care through digital innovation.
+              Swami Dayanand Hospital, established in 1963, is a major public
+              healthcare institution serving East Delhi and surrounding regions.
+              The hospital provides comprehensive medical services with a focus
+              on affordable, accessible, and quality patient care.
             </p>
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <Shield className="h-4 w-4" />
-              <span>HIPAA Compliant • Secure • Reliable</span>
+              <span>Secure • Reliable • Patient-Centered Care</span>
             </div>
           </div>
 
@@ -69,22 +71,22 @@ const Footer = () => {
             <ul className="space-y-3">
               <li className="flex items-center gap-2">
                 <Phone className="h-4 w-4 text-blue-600" />
-                <span className="text-gray-600">+252 61 123 4567</span>
+                <span className="text-gray-600"> +91 22581036</span>
               </li>
               <li className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-blue-600" />
-                <span className="text-gray-600">support@shifoonline.com</span>
+                <span className="text-gray-600">info@sdnhospital.org</span>
               </li>
               <li className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-blue-600" />
-                <span className="text-gray-600">Mogadishu, Somalia</span>
+                <span className="text-gray-600"> Shahdara North Zone, Dilshad Garden,New Delhi - 110095, India </span>
               </li>
             </ul>
             
             {/* Emergency Contact */}
             <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm font-medium text-red-800">Emergency Contact</p>
-              <p className="text-lg font-bold text-red-600">+252 61 999 9999</p>
+              <p className="text-sm font-medium text-red-800">Emergency (24/7)</p>
+              <p className="text-lg font-bold text-red-600">+91 22588585</p>
             </div>
           </div>
         </div>
@@ -94,10 +96,11 @@ const Footer = () => {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="mb-4 md:mb-0">
               <p className="text-gray-600 text-sm">
-                © {currentYear} ShifoOnline Hospital System. All rights reserved.
+                © {currentYear} Swami Dayanand Hospital, New Delhi.
+                  All rights reserved.
               </p>
               <p className="text-gray-500 text-xs mt-1">
-                Version 2.1.0 • Last updated: {new Date().toLocaleDateString()}
+                 Hospital Management System • Last updated: {new Date().toLocaleDateString()}
               </p>
             </div>
             
@@ -117,7 +120,7 @@ const Footer = () => {
           {/* Made with love */}
           <div className="mt-4 text-center">
             <p className="text-xs text-gray-500 flex items-center justify-center gap-1">
-              Made with <Heart className="h-3 w-3 text-red-500" /> by the ShifoOnline Team
+              Made with <Heart className="h-3 w-3 text-red-500" /> for Swami Dayanand Hospital
             </p>
           </div>
         </div>

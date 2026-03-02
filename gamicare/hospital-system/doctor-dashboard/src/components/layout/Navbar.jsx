@@ -38,7 +38,7 @@ const Navbar = () => {
                 </svg>
               </div>
               <div>
-                <h1 className="font-bold text-lg">ShifoOnline</h1>
+                <h1 className="font-bold text-lg">Swami Dayanand</h1>
                 <p className="text-xs text-gray-500">Doctor Portal</p>
               </div>
             </div>
@@ -88,11 +88,11 @@ const Navbar = () => {
                     <div className="max-h-96 overflow-y-auto">
                       <div className="p-4 border-b hover:bg-gray-50 cursor-pointer">
                         <p className="font-medium">New appointment request</p>
-                        <p className="text-sm text-gray-500">John Doe - Today at 2:00 PM</p>
+                        <p className="text-sm text-gray-500">anuhsree - Today at 2:00 PM</p>
                       </div>
                       <div className="p-4 border-b hover:bg-gray-50 cursor-pointer">
                         <p className="font-medium">Appointment approved</p>
-                        <p className="text-sm text-gray-500">Sarah Johnson - Tomorrow</p>
+                        <p className="text-sm text-gray-500">sana - Tomorrow</p>
                       </div>
                     </div>
                     <div className="p-4 border-t">
