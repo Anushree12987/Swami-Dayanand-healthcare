@@ -9,6 +9,15 @@ const fs = require('fs');
 const csv = require('csv-parser');
 const bcrypt = require('bcryptjs');
 const upload = multer({ dest: 'uploads/' });
+const departmentController = require('../controllers/departmentController');
+const adminController = require('../controllers/adminController');
+
+// Departments Management
+router.get('/departments', auth, role('admin'), departmentController.getAllDepartments);
+router.post('/departments', auth, role('admin'), departmentController.addDepartment);
+router.put('/departments/:id', auth, role('admin'), departmentController.updateDepartment);
+router.delete('/departments/:id', auth, role('admin'), departmentController.deleteDepartment);
+router.patch('/departments/:id/toggle-status', auth, role('admin'), departmentController.toggleStatus);
 
 // Get all patients (admin only)
 router.get('/patients', auth, role('admin'), async (req, res) => {
@@ -17,6 +26,65 @@ router.get('/patients', auth, role('admin'), async (req, res) => {
             .select('-password')
             .sort({ createdAt: -1 });
         res.json(patients);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+// Get single patient by ID
+router.get('/patients/:id', auth, role('admin'), async (req, res) => {
+    try {
+        const patient = await User.findById(req.params.id).select('-password');
+        if (!patient || patient.role !== 'patient') {
+            return res.status(404).json({ message: 'Patient not found' });
+        }
+        res.json(patient);
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+// Update patient (admin only)
+router.put('/patients/:id', auth, role('admin'), async (req, res) => {
+    try {
+        const { name, email, phone, medicalInfo, isActive } = req.body;
+        const patient = await User.findById(req.params.id);
+        
+        if (!patient || patient.role !== 'patient') {
+            return res.status(404).json({ message: 'Patient not found' });
+        }
+
+        if (name) patient.name = name;
+        if (email) patient.email = email;
+        if (phone) patient.phone = phone;
+        if (medicalInfo) patient.medicalInfo = medicalInfo;
+        if (isActive !== undefined) patient.isActive = isActive;
+
+        await patient.save();
+        res.json({ message: 'Patient updated successfully', patient });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+// Delete patient (admin only)
+router.delete('/patients/:id', auth, role('admin'), async (req, res) => {
+    try {
+        const patient = await User.findById(req.params.id);
+        if (!patient || patient.role !== 'patient') {
+            return res.status(404).json({ message: 'Patient not found' });
+        }
+
+        // Check if patient has any appointments
+        const hasAppointments = await Appointment.findOne({ patientId: req.params.id });
+        if (hasAppointments) {
+            return res.status(400).json({ 
+                message: 'Cannot delete patient with existing appointments. Please cancel all appointments first.' 
+            });
+        }
+
+        await User.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Patient deleted successfully' });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
@@ -96,6 +164,41 @@ router.patch('/appointments/:id/status', auth, role('admin'), async (req, res) =
         });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+// Delete appointment (admin only)
+router.delete('/appointments/:id', auth, role('admin'), async (req, res) => {
+    try {
+        const { id } = req.params;
+        console.log(`[ADMIN DELETE] Attempting to delete appointment: ${id}`);
+        
+        // Validate ObjectId format
+        if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+            console.error(`[ADMIN DELETE] Invalid appointment ID format: ${id}`);
+            return res.status(400).json({ message: 'Invalid appointment ID format' });
+        }
+        
+        const appointment = await Appointment.findById(id);
+        if (!appointment) {
+            console.warn(`[ADMIN DELETE] Appointment not found: ${id}`);
+            return res.status(404).json({ message: 'Appointment not found in registry' });
+        }
+        
+        await Appointment.findByIdAndDelete(id);
+        console.log(`[ADMIN DELETE] PURGE SUCCESS: ${id}`);
+        
+        return res.status(200).json({
+            status: 'success',
+            message: 'Appointment record deleted successfully'
+        });
+    } catch (error) {
+        console.error(`[ADMIN DELETE] FATAL ERROR:`, error);
+        return res.status(500).json({ 
+            status: 'error',
+            message: 'Database error during purge operation', 
+            error: error.message 
+        });
     }
 });
 
@@ -395,10 +498,28 @@ router.get('/stats', auth, role('admin'), async (req, res) => {
             status: 'completed'
         });
         
-        // Revenue calculations (using ₹500 per appointment)
-        const appointmentPrice = 50;
-        const todayRevenue = (todayApprovedAppointments + todayCompletedAppointments) * appointmentPrice;
-        const totalRevenue = (approvedAppointments + completedAppointments) * appointmentPrice;
+        // Revenue calculations
+        const todayRevenueResult = await Appointment.aggregate([
+            {
+                $match: {
+                    date: { $gte: today, $lt: tomorrow },
+                    status: { $in: ['approved', 'completed'] }
+                }
+            },
+            { $group: { _id: null, total: { $sum: "$amount" } } }
+        ]);
+        const todayRevenue = todayRevenueResult.length > 0 ? todayRevenueResult[0].total : 0;
+
+        const totalRevenueResult = await Appointment.aggregate([
+            {
+                $match: {
+                    status: { $in: ['approved', 'completed'] }
+                }
+            },
+            { $group: { _id: null, total: { $sum: "$amount" } } }
+        ]);
+        const totalRevenue = totalRevenueResult.length > 0 ? totalRevenueResult[0].total : 0;
+
         const weeklyRevenue = Math.round(totalRevenue * 0.25);
         const monthlyRevenue = Math.round(totalRevenue * 1.5);
         
@@ -468,17 +589,33 @@ router.get('/payments/stats', auth, role('admin'), async (req, res) => {
             date: { $gte: today, $lt: tomorrow }
         });
         
-        const completedAppointments = await Appointment.countDocuments({ 
-            status: 'completed',
-            date: { $gte: today, $lt: tomorrow }
-        });
-        
-        const appointmentPrice = 50; // Default price
-        
+        const todayRevenueResult = await Appointment.aggregate([
+            {
+                $match: {
+                    date: { $gte: today, $lt: tomorrow },
+                    status: { $in: ['approved', 'completed'] }
+                }
+            },
+            { $group: { _id: null, total: { $sum: "$amount" } } }
+        ]);
+        const todayRevenue = todayRevenueResult.length > 0 ? todayRevenueResult[0].total : 0;
+
+        const totalApprovedResult = await Appointment.aggregate([
+            { $match: { status: 'approved' } },
+            { $group: { _id: null, total: { $sum: "$amount" } } }
+        ]);
+        const totalApprovedRevenue = totalApprovedResult.length > 0 ? totalApprovedResult[0].total : 0;
+
+        const totalCompletedResult = await Appointment.aggregate([
+            { $match: { status: 'completed' } },
+            { $group: { _id: null, total: { $sum: "$amount" } } }
+        ]);
+        const totalCompletedRevenue = totalCompletedResult.length > 0 ? totalCompletedResult[0].total : 0;
+
         const stats = {
-            todayRevenue: (approvedAppointments + completedAppointments) * appointmentPrice,
-            totalApprovedRevenue: (await Appointment.countDocuments({ status: 'approved' })) * appointmentPrice,
-            totalCompletedRevenue: (await Appointment.countDocuments({ status: 'completed' })) * appointmentPrice,
+            todayRevenue,
+            totalApprovedRevenue,
+            totalCompletedRevenue,
             pendingPayments: await Appointment.countDocuments({ status: 'pending' }),
             successfulPayments: await Appointment.countDocuments({ 
                 $or: [
@@ -493,5 +630,8 @@ router.get('/payments/stats', auth, role('admin'), async (req, res) => {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
+
+// System Broadcasting
+router.post('/broadcast', auth, role('admin'), adminController.broadcastMessage);
 
 module.exports = router;
