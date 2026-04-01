@@ -445,7 +445,7 @@ const BookAppointment = () => {
                     <div className="flex justify-between items-center">
                       <span className="text-[#16C79A]/80">Date:</span>
                       <span className="font-medium text-white">
-                        {formData.date ? new Date(formData.date).toLocaleDateString('en-US', { 
+                        {formData.date ? new Date(formData.date).toLocaleDateString('', { 
                           weekday: 'short', 
                           year: 'numeric', 
                           month: 'short', 
@@ -460,7 +460,7 @@ const BookAppointment = () => {
                     <div className="pt-3 border-t border-[#16C79A]/20">
                       <div className="flex justify-between items-center">
                         <span className="text-[#16C79A]/80">Consultation Fee:</span>
-                        <span className="text-xl font-bold text-[#16C79A]">$50.00</span>
+                        <span className="text-xl font-bold text-[#16C79A]">₹500.00</span>
                       </div>
                     </div>
                   </div>
