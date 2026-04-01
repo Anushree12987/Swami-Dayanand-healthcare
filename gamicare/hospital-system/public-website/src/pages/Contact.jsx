@@ -15,6 +15,7 @@ const Contact = () => {
     message: ''
   });
 
+
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -22,7 +23,7 @@ const Contact = () => {
     setLoading(true);
 
     try {
-      const response = await fetch("https://formspree.io/f/xpqawngr", {
+      const response = await fetch("https://formspree.io/f/mjgeozbg", {
         method: "POST",
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

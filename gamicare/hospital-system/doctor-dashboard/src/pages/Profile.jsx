@@ -210,7 +210,7 @@ const Profile = () => {
     <div className="p-6 bg-gradient-to-br from-[#19456B] to-[#0d2c4a] min-h-screen">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-white">Profile Settings</h1>
-        <p className="text-[#16C79A]/80">Manage your professional profile information</p>
+        <p className="text-[#16C79A]/80">Manage your professional profile informations</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
