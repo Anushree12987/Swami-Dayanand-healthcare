@@ -123,7 +123,7 @@ const MyAppointments = () => {
 
   const formatDate = (dateString) => {
     const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('en-US', options);
+    return new Date(dateString).toLocaleDateString('', options);
   };
 
   const cancelAppointment = async (appointmentId) => {
@@ -370,7 +370,7 @@ const MyAppointments = () => {
                       </span>
                       <span className="inline-flex items-center gap-1 text-xs px-3 py-1.5 bg-gradient-to-r from-[#0d2c4a] to-[#19456B] text-white/80 rounded-full border border-[#16C79A]/20">
                         <FaDollarSign className="text-[#16C79A]" size={10} />
-                        Consultation: $50
+                        Consultation: ₹500
                       </span>
                       <span className="inline-flex items-center gap-1 text-xs px-3 py-1.5 bg-gradient-to-r from-[#0d2c4a] to-[#19456B] text-white/80 rounded-full border border-[#16C79A]/20">
                         <FaHospital className="text-[#16C79A]" size={10} />
@@ -454,7 +454,7 @@ const MyAppointments = () => {
                   </div>
                   <div>
                     <label className="text-sm text-[#16C79A]/80">Consultation Fee</label>
-                    <p className="text-xl font-bold text-[#16C79A]">$50.00</p>
+                    <p className="text-xl font-bold text-[#16C79A]">₹500.00</p>
                   </div>
                   <div>
                     <label className="text-sm text-[#16C79A]/80">Room Number</label>
