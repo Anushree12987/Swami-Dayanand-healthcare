@@ -302,7 +302,7 @@ router.get('/stats', auth, role('admin'), async (req, res) => {
             status: 'completed'
         });
         
-        // Revenue calculations (using $50 per appointment)
+        // Revenue calculations (using ₹500 per appointment)
         const appointmentPrice = 50;
         const todayRevenue = (todayApprovedAppointments + todayCompletedAppointments) * appointmentPrice;
         const totalRevenue = (approvedAppointments + completedAppointments) * appointmentPrice;

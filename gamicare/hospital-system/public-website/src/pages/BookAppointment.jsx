@@ -142,7 +142,7 @@ const BookAppointment = () => {
     <div className="p-4 md:p-6  min-h-screen">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-white">Book Appointment</h1>
+        <h1 className="text-3xl font-bold text-white">  Book Appointment - Swami Dayanand Hospital, New Delhi</h1>
         <div className="flex items-center gap-2 text-[#16C79A] mt-2">
           <FaInfoCircle />
           <p>Select a doctor and schedule your appointment in 3 easy steps</p>
@@ -271,7 +271,7 @@ const BookAppointment = () => {
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-lg font-bold text-[#16C79A]">$50</div>
+                          <div className="text-lg font-bold text-[#16C79A]">₹500</div>
                           <div className="text-xs text-[#16C79A]/80">consultation</div>
                         </div>
                       </div>
@@ -288,7 +288,7 @@ const BookAppointment = () => {
                           ⏱️ 15 min avg wait
                         </span>
                         <span className="text-xs px-2 py-1 bg-gradient-to-r from-[#0d2c4a] to-[#19456B] text-white/80 rounded border border-[#16C79A]/20">
-                          💬 English, Somali
+                          💬 Hindi, English
                         </span>
                       </div>
                     </div>
@@ -484,7 +484,7 @@ const BookAppointment = () => {
                   <div className="flex items-start gap-2">
                     <span className="text-blue-400 text-sm">ℹ️</span>
                     <p className="text-xs text-[#16C79A]">
-                      You will receive a confirmation email and SMS after booking. 
+                      You will receive confirmation via SMS from Swami Dayanand Hospital.
                       Please arrive 15 minutes before your scheduled time.
                     </p>
                   </div>
