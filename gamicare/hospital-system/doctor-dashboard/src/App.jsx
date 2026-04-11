@@ -10,6 +10,8 @@ import Profile from './pages/Profile'
 import Notifications from './pages/Notifications'
 import Availability from './pages/Availability'
 import Login from './pages/Login'
+import ForgotPassword from './pages/ForgotPassword'
+import ConsultationRoom from './pages/ConsultationRoom'
 import PrivateRoute from './components/common/PrivateRoute'
 
 function App() {
@@ -18,6 +20,7 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route element={<PrivateRoute />}>
             <Route element={<Layout />}>
               <Route path="/" element={<Navigate to="/dashboard" />} />
@@ -27,6 +30,7 @@ function App() {
               <Route path="/availability" element={<Availability />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/notifications" element={<Notifications />} />
+              <Route path="/consultation/:roomID" element={<ConsultationRoom />} />
             </Route>
           </Route>
         </Routes>

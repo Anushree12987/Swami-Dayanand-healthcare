@@ -11,14 +11,14 @@ const ErrorMessage = ({
     error: 'bg-red-50 border-red-200 text-red-800',
     warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
     info: 'bg-blue-50 border-blue-200 text-blue-800',
-    success: 'bg-green-50 border-green-200 text-green-800'
+    success: 'bg-blue-50 border-blue-200 text-blue-800'
   }
 
   const iconColors = {
     error: 'text-red-600',
     warning: 'text-yellow-600',
     info: 'text-blue-600',
-    success: 'text-green-600'
+    success: 'text-blue-600'
   }
 
   const Icon = {
