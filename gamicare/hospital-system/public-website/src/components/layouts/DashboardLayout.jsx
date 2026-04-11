@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, Link, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
   FaHome, 
@@ -17,7 +17,24 @@ const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
+
+  // Show spinner while auth is being verified
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-[#0d2c4a] to-[#19456B]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-14 w-14 border-4 border-[#16C79A] border-t-transparent"></div>
+          <p className="text-[#16C79A] font-medium">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
   const menuItems = [
     { path: '/patient/dashboard', icon: FaHome, label: 'Dashboard' },

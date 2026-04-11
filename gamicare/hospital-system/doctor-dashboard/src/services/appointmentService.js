@@ -29,5 +29,11 @@ export const appointmentService = {
   getUpcomingAppointments: async () => {
     const response = await api.get('/appointments/doctor/upcoming')
     return response.data
+  },
+
+  // Update payment status
+  updatePaymentStatus: async (id, paymentStatus) => {
+    const response = await api.patch(`/appointments/${id}/payment-status`, { paymentStatus })
+    return response.data
   }
 }

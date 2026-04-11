@@ -26,11 +26,11 @@ const appointmentSchema = new mongoose.Schema({
     },
     amount: {
         type: Number,
-        default: 20
+        required: true
     },
     paymentStatus: {
         type: String,
-        enum: ['pending', 'paid', 'failed', 'refunded'],
+        enum: ['pending', 'paid', 'failed', 'refunded', 'cash_pending'],
         default: 'pending'
     },
     reason: {
@@ -38,6 +38,21 @@ const appointmentSchema = new mongoose.Schema({
     },
     notes: {
         type: String
+    },
+    type: {
+        type: String,
+        enum: ['In-person', 'Virtual'],
+        default: 'In-person'
+    },
+    roomID: {
+        type: String
+    },
+    symptoms: {
+        type: String
+    },
+    reminderSent: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true

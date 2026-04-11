@@ -1,19 +1,23 @@
 import React, { useState, useEffect } from 'react'
-import { Calendar, Filter, Search, Download, RefreshCw, User, Clock, AlertCircle } from 'lucide-react'
+import { useSearchParams } from 'react-router-dom'
+import { Calendar, Filter, Search, Download, RefreshCw, User, Clock, AlertCircle, CreditCard, CheckCircle2, XCircle, MapPin } from 'lucide-react'
 import { appointmentService } from '../services/appointmentService'
+import { useAuth } from '../contexts/AuthContext'
 import LoadingSpinner from '../components/common/LoadingSpinner'
 import ErrorMessage from '../components/common/ErrorMessage'
 import { toast } from 'react-toastify'
 
 const Appointments = () => {
+  const { user } = useAuth()
+  const [searchParams] = useSearchParams()
   const [appointments, setAppointments] = useState([])
   const [filteredAppointments, setFilteredAppointments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filters, setFilters] = useState({
-    status: 'all',
-    date: '',
+    status: searchParams.get('status') || 'all',
+    date: searchParams.get('date') || '',
     sortBy: 'date_desc'
   })
   const [currentPage, setCurrentPage] = useState(1)
@@ -41,98 +45,20 @@ const Appointments = () => {
       } else if (response && response.appointments) {
         appointmentsData = response.appointments
       } else {
-        appointmentsData = getMockAppointments()
+        appointmentsData = []
       }
       
       setAppointments(appointmentsData)
     } catch (error) {
       console.error('Error fetching appointments:', error)
       setError('Failed to load appointments. Please try again.')
-      setAppointments(getMockAppointments())
+      setAppointments([])
     } finally {
       setLoading(false)
     }
   }
 
-  const getMockAppointments = () => {
-    return [
-      {
-        _id: '1',
-        patientId: {
-          _id: 'p1',
-          name: 'John Doe',
-          email: 'john@example.com',
-          phone: '+252 61 123 4567'
-        },
-        date: new Date(Date.now() + 86400000),
-        time: '10:00',
-        status: 'pending',
-        symptoms: 'Headache and fever',
-        notes: '',
-        createdAt: new Date()
-      },
-      {
-        _id: '2',
-        patientId: {
-          _id: 'p2',
-          name: 'Sarah Johnson',
-          email: 'sarah@example.com',
-          phone: '+252 61 234 5678'
-        },
-        date: new Date(Date.now() + 172800000),
-        time: '14:00',
-        status: 'approved',
-        symptoms: 'Regular checkup',
-        notes: 'Annual physical examination',
-        createdAt: new Date(Date.now() - 86400000)
-      },
-      {
-        _id: '3',
-        patientId: {
-          _id: 'p3',
-          name: 'Michael Brown',
-          email: 'michael@example.com',
-          phone: '+252 61 345 6789'
-        },
-        date: new Date(Date.now() + 259200000),
-        time: '11:30',
-        status: 'pending',
-        symptoms: 'Back pain',
-        notes: '',
-        createdAt: new Date(Date.now() - 172800000)
-      },
-      {
-        _id: '4',
-        patientId: {
-          _id: 'p4',
-          name: 'Emily Wilson',
-          email: 'emily@example.com',
-          phone: '+252 61 456 7890'
-        },
-        date: new Date(Date.now() - 86400000),
-        time: '15:00',
-        status: 'completed',
-        symptoms: 'Cough and cold',
-        notes: 'Prescribed medication',
-        createdAt: new Date(Date.now() - 259200000)
-      },
-      {
-        _id: '5',
-        patientId: {
-          _id: 'p5',
-          name: 'Robert Davis',
-          email: 'robert@example.com',
-          phone: '+252 61 567 8901'
-        },
-        date: new Date(),
-        time: '09:00',
-        status: 'approved',
-        symptoms: 'Dental checkup',
-        notes: 'Follow-up required',
-        createdAt: new Date(Date.now() - 345600000)
-      }
-    ]
-  }
+
 
   const filterAppointments = () => {
     let filtered = [...appointments]
@@ -193,6 +119,23 @@ const Appointments = () => {
     }
   }
 
+  const handlePaymentConfirm = async (id) => {
+    try {
+      const response = await appointmentService.updatePaymentStatus(id, 'paid')
+      if (response) {
+        toast.success('Payment confirmed successfully')
+        setAppointments(prev =>
+          prev.map(apt =>
+            apt._id === id ? { ...apt, paymentStatus: 'paid' } : apt
+          )
+        )
+      }
+    } catch (error) {
+      console.error('Error confirming payment:', error)
+      toast.error('Failed to confirm payment')
+    }
+  }
+
   const exportToCSV = () => {
     if (filteredAppointments.length === 0) {
       toast.warning('No appointments to export')
@@ -244,6 +187,29 @@ const Appointments = () => {
       case 'cancelled': return <span className={`${baseClasses} bg-red-100 text-red-800`}>Cancelled</span>;
       default: return <span className={`${baseClasses} bg-gray-100 text-gray-800`}>{status}</span>;
     }
+  }
+  
+  const getPaymentBadge = (paymentStatus) => {
+    const baseClasses = "px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1"
+    if (paymentStatus === 'paid') {
+      return (
+        <span className={`${baseClasses} bg-green-500/10 text-green-400 border border-green-500/20`}>
+          <CheckCircle2 className="h-3 w-3" /> Paid
+        </span>
+      )
+    }
+    if (paymentStatus === 'cash_pending') {
+      return (
+        <span className={`${baseClasses} bg-yellow-500/10 text-yellow-400 border border-yellow-500/20`}>
+          <Clock className="h-3 w-3" /> Cash Pending
+        </span>
+      )
+    }
+    return (
+      <span className={`${baseClasses} bg-red-500/10 text-red-300 border border-red-500/20`}>
+        <AlertCircle className="h-3 w-3" /> Unpaid
+      </span>
+    )
   }
 
   const formatDate = (dateString) => {
@@ -452,6 +418,10 @@ const Appointments = () => {
                                   {formatDate(appointment.date)} at {appointment.time}
                                 </span>
                               </div>
+                              <div className="flex items-center gap-2 text-sm">
+                                <MapPin className="h-4 w-4 text-[#16C79A]/60" />
+                                <span className="text-[#16C79A]/80">Room {user?.roomNumber || 'N/A'}</span>
+                              </div>
                               {isToday && (
                                 <span className="px-2 py-1 bg-gradient-to-r from-[#16C79A]/20 to-[#11698E]/20 text-[#16C79A] text-xs rounded-full">
                                   Today
@@ -467,21 +437,31 @@ const Appointments = () => {
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
+                          {getPaymentBadge(appointment.paymentStatus)}
                           {getStatusBadge(appointment.status)}
                           
                           <div className="flex gap-2">
+                             {appointment.paymentStatus === 'cash_pending' && (
+                              <button
+                                onClick={() => handlePaymentConfirm(appointment._id)}
+                                className="px-3 py-1 bg-gradient-to-r from-emerald-500 to-green-600 text-white text-sm rounded-lg hover:opacity-90 transition-all flex items-center gap-1 border border-white/10"
+                              >
+                                <CheckCircle2 className="h-3 w-3" /> Confirm Cash Pay
+                              </button>
+                            )}
+
                             {appointment.status === 'pending' && (
                               <>
                                 <button
                                   onClick={() => handleStatusUpdate(appointment._id, 'approved')}
-                                  className="px-3 py-1 bg-gradient-to-r from-[#16C79A] to-[#11698E] text-white text-sm rounded-lg hover:opacity-90 transition-all"
+                                  className="px-3 py-1 bg-gradient-to-r from-[#16C79A] to-[#11698E] text-white text-sm rounded-lg hover:opacity-90 transition-all font-bold border border-white/10"
                                 >
                                   Approve
                                 </button>
                                 <button
                                   onClick={() => handleStatusUpdate(appointment._id, 'cancelled')}
-                                  className="px-3 py-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-sm rounded-lg hover:opacity-90 transition-all"
+                                  className="px-3 py-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-sm rounded-lg hover:opacity-90 transition-all font-bold border border-white/10"
                                 >
                                   Cancel
                                 </button>
@@ -490,7 +470,7 @@ const Appointments = () => {
                             {appointment.status === 'approved' && (
                               <button
                                 onClick={() => handleStatusUpdate(appointment._id, 'completed')}
-                                className="px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm rounded-lg hover:opacity-90 transition-all"
+                                className="px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm rounded-lg hover:opacity-90 transition-all font-bold border border-white/10"
                               >
                                 Mark Complete
                               </button>

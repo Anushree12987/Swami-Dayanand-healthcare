@@ -14,14 +14,14 @@ const sendEmail = async (options) => {
   
   // Define email options
   const mailOptions = {
-    from: process.env.EMAIL_FROM || 'ShifoOnline Hospital <noreply@shifoonline.com>',
+    from: process.env.EMAIL_FROM || 'Swami Dayanand Healthcare <noreply@swamidhc.com>',
     to: options.email,
     subject: options.subject,
     text: options.message,
     html: options.html || `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; text-align: center;">
-          <h1 style="color: white; margin: 0;">🏥 ShifoOnline Hospital</h1>
+          <h1 style="color: white; margin: 0;">🏥 Swami Dayanand Healthcare</h1>
         </div>
         <div style="padding: 20px; background-color: #f9f9f9;">
           <h2 style="color: #333;">${options.subject}</h2>
@@ -29,13 +29,13 @@ const sendEmail = async (options) => {
             ${options.message.replace(/\n/g, '<br>')}
           </div>
           <p style="color: #666; margin-top: 20px;">
-            This is an automated message from ShifoOnline Hospital System.
+            This is an automated message from Swami Dayanand Healthcare System.
             Please do not reply to this email.
           </p>
         </div>
         <div style="background-color: #f1f1f1; padding: 15px; text-align: center; color: #666; font-size: 12px;">
-          <p>&copy; ${new Date().getFullYear()} ShifoOnline Hospital. All rights reserved.</p>
-          <p>Contact: support@shifoonline.com | Phone: +252 61 123 4567</p>
+          <p>© ${new Date().getFullYear()} Swami Dayanand Healthcare. All rights reserved.</p>
+          <p>Contact: support@swamidhc.com | Phone: +91 98765 43210</p>
         </div>
       </div>
     `

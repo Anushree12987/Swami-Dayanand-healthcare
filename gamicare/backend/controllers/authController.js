@@ -75,13 +75,11 @@ const register = async (req, res) => {
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        // Hash password
-        const hashedPassword = await bcrypt.hash(password, 10);
-
+        // Password hashing is handled automatically by the User model's pre-save middleware
         const user = new User({
             name,
             email,
-            password: hashedPassword,
+            password: password, // Pass raw password; mongoose will hash it via pre('save')
             phone: phone || 'Not provided',
             address: address || 'Not provided',
             role: 'patient'
@@ -147,7 +145,8 @@ const login = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                specialization: user.specialization
+                specialization: user.specialization,
+                roomNumber: user.roomNumber
             }
         });
     } catch (error) {
@@ -232,7 +231,8 @@ const doctorLogin = async (req, res) => {
                 name: user.name,
                 email: user.email,
                 role: user.role,
-                specialization: user.specialization
+                specialization: user.specialization,
+                roomNumber: user.roomNumber
             }
         });
     } catch (error) {

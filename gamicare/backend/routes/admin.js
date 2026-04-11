@@ -4,6 +4,11 @@ const auth = require('../middleware/auth');
 const role = require('../middleware/role');
 const User = require('../models/User');
 const Appointment = require('../models/Appointment');
+const multer = require('multer');
+const fs = require('fs');
+const csv = require('csv-parser');
+const bcrypt = require('bcryptjs');
+const upload = multer({ dest: 'uploads/' });
 
 // Get all patients (admin only)
 router.get('/patients', auth, role('admin'), async (req, res) => {
@@ -27,7 +32,7 @@ router.get('/appointments', auth, role('admin'), async (req, res) => {
         
         const appointments = await Appointment.find(query)
             .populate('patientId', 'name email phone')
-            .populate('doctorId', 'name specialization')
+            .populate('doctorId', 'name specialization roomNumber')
             .sort({ date: -1, time: -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit);
@@ -50,7 +55,7 @@ router.get('/appointments/recent', auth, role('admin'), async (req, res) => {
     try {
         const appointments = await Appointment.find()
             .populate('patientId', 'name email phone')
-            .populate('doctorId', 'name specialization')
+            .populate('doctorId', 'name specialization roomNumber')
             .sort({ createdAt: -1 })
             .limit(5);
         res.json(appointments);
@@ -160,6 +165,7 @@ router.put('/doctors/:id', auth, role('admin'), async (req, res) => {
                 email: doctor.email,
                 specialization: doctor.specialization,
                 phone: doctor.phone,
+                roomNumber: doctor.roomNumber,
                 isActive: doctor.isActive
             }
         });
@@ -192,6 +198,7 @@ router.patch('/doctors/:id/status', auth, role('admin'), async (req, res) => {
                 id: doctor._id,
                 name: doctor.name,
                 email: doctor.email,
+                roomNumber: doctor.roomNumber,
                 isActive: doctor.isActive
             }
         });
@@ -236,6 +243,14 @@ router.post('/doctors', auth, role('admin'), async (req, res) => {
             return res.status(400).json({ message: 'Doctor already exists' });
         }
         
+        // Find max room number among all doctors
+        const lastDoctor = await User.findOne({ role: 'doctor' })
+            .sort({ roomNumber: -1 });
+            
+        const nextRoomNumber = lastDoctor && lastDoctor.roomNumber 
+            ? lastDoctor.roomNumber + 1 
+            : 101;
+            
         const doctor = new User({
             name,
             email,
@@ -244,6 +259,7 @@ router.post('/doctors', auth, role('admin'), async (req, res) => {
             phone,
             availableTime: availableTime || [{ day: 'Monday', startTime: '09:00', endTime: '17:00' }],
             role: 'doctor',
+            roomNumber: nextRoomNumber,
             isActive: true
         });
         
@@ -257,10 +273,87 @@ router.post('/doctors', auth, role('admin'), async (req, res) => {
                 email: doctor.email,
                 specialization: doctor.specialization,
                 phone: doctor.phone,
+                roomNumber: doctor.roomNumber,
                 isActive: doctor.isActive
             }
         });
     } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
+// Import doctors via CSV (admin only)
+router.post('/doctors/import', auth, role('admin'), upload.single('file'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ message: 'No CSV file uploaded' });
+        }
+
+        const results = [];
+        const errors = [];
+        let successCount = 0;
+
+        fs.createReadStream(req.file.path)
+            .pipe(csv())
+            .on('data', (data) => results.push(data))
+            .on('end', async () => {
+                // Get starting room number
+                const lastDoctor = await User.findOne({ role: 'doctor' })
+                    .sort({ roomNumber: -1 });
+                let roomCounter = lastDoctor && lastDoctor.roomNumber ? lastDoctor.roomNumber + 1 : 101;
+
+                for (let i = 0; i < results.length; i++) {
+                    const row = results[i];
+                    try {
+                        const { name, email, password, specialization, phone } = row;
+                        
+                        if (!name || !email || !password) {
+                            errors.push(`Row ${i + 2}: Missing required fields (name, email, password)`);
+                            continue;
+                        }
+
+                        const existingDoctor = await User.findOne({ email });
+                        if (existingDoctor) {
+                            errors.push(`Row ${i + 2}: Email ${email} already exists`);
+                            continue;
+                        }
+
+                        const hashedPassword = await bcrypt.hash(password, 10);
+
+                        const doctor = new User({
+                            name,
+                            email,
+                            password: hashedPassword,
+                            specialization: specialization || 'General Physician',
+                            phone: phone || '',
+                            availableTime: [{ day: 'Monday', startTime: '09:00', endTime: '17:00' }],
+                            role: 'doctor',
+                            roomNumber: roomCounter++,
+                            isActive: true
+                        });
+                        
+                        await doctor.save();
+                        successCount++;
+                    } catch (err) {
+                        errors.push(`Row ${i + 2}: ${err.message}`);
+                    }
+                }
+                
+                // Cleanup temp file
+                fs.unlinkSync(req.file.path);
+                
+                res.json({
+                    message: `Import complete. Successfully added ${successCount} doctors.`,
+                    successCount,
+                    errors: errors.length > 0 ? errors : null
+                });
+            })
+            .on('error', (error) => {
+                res.status(500).json({ message: 'Error reading CSV file', error: error.message });
+            });
+            
+    } catch (error) {
+        if (req.file) fs.unlinkSync(req.file.path);
         res.status(500).json({ message: 'Server error', error: error.message });
     }
 });
@@ -343,7 +436,7 @@ router.get('/payments', auth, role('admin'), async (req, res) => {
             ]
         })
         .populate('patientId', 'name email phone')
-        .populate('doctorId', 'name specialization')
+        .populate('doctorId', 'name specialization roomNumber')
         .select('date time status patientId doctorId amount')
         .sort({ date: -1, time: -1 })
         .limit(parseInt(limit));

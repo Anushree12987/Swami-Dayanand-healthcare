@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   FaPlus, FaSearch, FaEdit, FaTrash, FaUserMd, 
   FaFilter, FaEye, FaPhone, FaEnvelope, FaCalendarAlt,
-  FaTimes, FaCheck, FaClock, FaUserInjured
+  FaTimes, FaCheck, FaClock, FaUserInjured, FaUpload
 } from 'react-icons/fa';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -19,6 +19,8 @@ const Doctors = () => {
   const [selectedDoctor, setSelectedDoctor] = useState(null);
   const [doctorAppointments, setDoctorAppointments] = useState([]);
   const [loadingAppointments, setLoadingAppointments] = useState(false);
+  const fileInputRef = React.useRef(null);
+  const [uploadingCSV, setUploadingCSV] = useState(false);
   
   const [newDoctor, setNewDoctor] = useState({
     name: '',
@@ -168,6 +170,49 @@ const Doctors = () => {
     }
   };
 
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      toast.error('Please select a valid CSV file');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      setUploadingCSV(true);
+      const loadingToast = toast.loading('Uploading doctors...');
+      
+      const response = await api.post('/admin/doctors/import', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      toast.dismiss(loadingToast);
+      toast.success(response.data.message || 'Doctors imported successfully');
+      
+      if (response.data.errors && response.data.errors.length > 0) {
+         console.warn("Import warning:", response.data.errors);
+         toast.error(`Imported with ${response.data.errors.length} errors/skipped rows.`);
+      }
+      
+      fetchDoctors();
+    } catch (error) {
+      toast.dismiss();
+      toast.error(error.response?.data?.message || 'Failed to import CSV');
+    } finally {
+      setUploadingCSV(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+
   const addAvailableTimeSlot = () => {
     setEditDoctor({
       ...editDoctor,
@@ -217,13 +262,30 @@ const Doctors = () => {
           <h1 className="text-3xl font-bold text-white mb-2">Doctors Management</h1>
           <p className="text-[#16C79A]/80">Manage all doctors in the system</p>
         </div>
-        <button 
-          onClick={() => setShowAddModal(true)}
-          className="px-6 py-3 bg-gradient-to-r from-[#16C79A] to-[#11698E] text-white rounded-xl hover:opacity-90 transition-all flex items-center gap-3 mt-4 md:mt-0 shadow-lg hover:shadow-xl"
-        >
-          <FaPlus />
-          Add New Doctor
-        </button>
+        <div className="flex gap-3 mt-4 md:mt-0">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            accept=".csv" 
+            className="hidden" 
+          />
+          <button 
+            onClick={triggerFileInput}
+            disabled={uploadingCSV}
+            className="px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-xl hover:opacity-90 transition-all flex items-center gap-3 shadow-lg hover:shadow-xl disabled:opacity-50"
+          >
+            <FaUpload />
+            {uploadingCSV ? 'Uploading...' : 'Upload CSV'}
+          </button>
+          <button 
+            onClick={() => setShowAddModal(true)}
+            className="px-6 py-3 bg-gradient-to-r from-[#16C79A] to-[#11698E] text-white rounded-xl hover:opacity-90 transition-all flex items-center gap-3 shadow-lg hover:shadow-xl"
+          >
+            <FaPlus />
+            Add New Doctor
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -293,6 +355,7 @@ const Doctors = () => {
               <tr className="bg-gradient-to-r from-[#11698E]/20 to-[#19456B]/20 border-b border-[#16C79A]/20">
                 <th className="text-left py-4 px-6 text-[#16C79A] font-medium">Doctor</th>
                 <th className="text-left py-4 px-6 text-[#16C79A] font-medium">Specialization</th>
+                <th className="text-left py-4 px-6 text-[#16C79A] font-medium">Room</th>
                 <th className="text-left py-4 px-6 text-[#16C79A] font-medium">Contact</th>
                 <th className="text-left py-4 px-6 text-[#16C79A] font-medium">Status</th>
                 <th className="text-left py-4 px-6 text-[#16C79A] font-medium">Actions</th>
@@ -316,6 +379,9 @@ const Doctors = () => {
                     <span className="px-3 py-1 rounded-full bg-gradient-to-r from-[#16C79A]/20 to-[#11698E]/20 text-[#16C79A] text-sm font-medium">
                       {doctor.specialization || 'N/A'}
                     </span>
+                  </td>
+                  <td className="py-4 px-6 text-white font-medium">
+                    {doctor.roomNumber || 'N/A'}
                   </td>
                   <td className="py-4 px-6">
                     <div className="space-y-1">
@@ -425,6 +491,9 @@ const Doctors = () => {
                   <label className="label text-[#16C79A]/80">Password *</label>
                   <input
                     type="password"
+                    id="new-doctor-password"
+                    name="password"
+                    autocomplete="new-password"
                     className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
                     value={newDoctor.password}
                     onChange={(e) => setNewDoctor({...newDoctor, password: e.target.value})}
@@ -684,6 +753,11 @@ const Doctors = () => {
                     <div>
                       <label className="label text-[#16C79A]/80">Doctor ID</label>
                       <div className="px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white text-sm">{selectedDoctor._id}</div>
+                    </div>
+                    
+                    <div>
+                      <label className="label text-[#16C79A]/80">Assigned Room</label>
+                      <div className="px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white font-bold">{selectedDoctor.roomNumber || 'N/A'}</div>
                     </div>
                   </div>
                 </div>

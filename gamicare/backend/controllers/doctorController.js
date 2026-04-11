@@ -25,7 +25,7 @@ exports.getAllDoctors = async (req, res) => {
         }
         
         const doctors = await User.find(query)
-            .select('name specialization qualification experience consultationFee rating profileImage bio')
+            .select('name specialization qualification experience consultationFee rating profileImage bio roomNumber')
             .sort({ 'rating.average': -1 });
         
         res.status(200).json({

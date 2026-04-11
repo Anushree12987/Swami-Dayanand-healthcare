@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   FaCalendarAlt, 
   FaClock, 
@@ -21,7 +22,9 @@ import {
   FaUser,
   FaFileAlt,
   FaCalendar,
-  FaClipboardList
+  FaClipboardList,
+  FaVideo,
+  FaWallet
 } from 'react-icons/fa';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -51,9 +54,11 @@ const MyAppointments = () => {
         headers: { Authorization: `Bearer ${token}` }
       };
 
-      const response = await axios.get('http://localhost:5000/api/appointments/patient', config);
-      setAppointments(response.data);
+      const response = await axios.get('http://localhost:5001/api/appointments/patient', config);
+      const appData = response.data.data || response.data || [];
+      setAppointments(Array.isArray(appData) ? appData : []);
     } catch (error) {
+      console.error('Fetch appointments error:', error);
       toast.error('Failed to load appointments');
     } finally {
       setLoading(false);
@@ -68,10 +73,11 @@ const MyAppointments = () => {
     }
 
     if (searchTerm) {
+      const search = searchTerm.toLowerCase();
       filtered = filtered.filter(app => 
-        app.doctorId?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        app.doctorId?.specialization?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        app.symptoms?.toLowerCase().includes(searchTerm.toLowerCase())
+        (app.doctorId?.name?.toLowerCase() || '').includes(search) ||
+        (app.doctorId?.specialization?.toLowerCase() || '').includes(search) ||
+        (app.symptoms?.toLowerCase() || '').includes(search)
       );
     }
 
@@ -116,14 +122,15 @@ const MyAppointments = () => {
     return (
       <span className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border ${config.bg} ${config.border} ${config.text} text-sm font-medium`}>
         {config.icon}
-        {status.charAt(0).toUpperCase() + status.slice(1)}
+        {(status || 'pending').charAt(0).toUpperCase() + (status || 'pending').slice(1)}
       </span>
     );
   };
 
   const formatDate = (dateString) => {
+    if (!dateString || isNaN(new Date(dateString).getTime())) return 'Invalid Date';
     const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('', options);
+    return new Date(dateString).toLocaleDateString('en-IN', options);
   };
 
   const cancelAppointment = async (appointmentId) => {
@@ -136,7 +143,7 @@ const MyAppointments = () => {
       };
 
       await axios.patch(
-        `http://localhost:5000/api/appointments/${appointmentId}/status`,
+        `http://localhost:5001/api/appointments/${appointmentId}/status`,
         { status: 'cancelled' },
         config
       );
@@ -148,6 +155,31 @@ const MyAppointments = () => {
       fetchAppointments();
     } catch (error) {
       toast.error('Failed to cancel appointment');
+    }
+  };
+
+  const handleCashPayment = async (appointmentId) => {
+    if (!window.confirm('Are you sure you want to request to pay via cash at the hospital?')) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const config = {
+        headers: { Authorization: `Bearer ${token}` }
+      };
+
+      await axios.patch(
+        `http://localhost:5001/api/appointments/${appointmentId}/payment-status`,
+        { paymentStatus: 'cash_pending' },
+        config
+      );
+
+      toast.success('Cash payment request sent. Please pay at the clinic.', {
+        icon: '🏦',
+        duration: 4000
+      });
+      fetchAppointments();
+    } catch (error) {
+      toast.error('Failed to update payment status');
     }
   };
 
@@ -294,9 +326,14 @@ const MyAppointments = () => {
                           <h3 className="text-lg font-bold text-white">
                             {appointment.doctorId?.name || 'Doctor'}
                           </h3>
-                          <p className="text-[#16C79A] font-medium">
-                            {appointment.doctorId?.specialization || 'Specialization'}
-                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-[#16C79A] font-medium">
+                              {appointment.doctorId?.specialization || 'Specialization'}
+                            </p>
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 ${appointment.type === 'Virtual' ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-gray-500/20 text-gray-400 border-gray-500/30'} text-[10px] font-bold rounded-full border`}>
+                              {appointment.type === 'Virtual' ? '💻 Virtual' : '🏥 In-person'}
+                            </span>
+                          </div>
                           <div className="flex flex-wrap items-center gap-4 mt-3">
                             <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-[#0d2c4a] to-[#19456B] text-white rounded-lg text-sm border border-[#16C79A]/20">
                               <FaCalendarAlt className="text-[#16C79A]" />
@@ -335,8 +372,50 @@ const MyAppointments = () => {
                               Cancel
                             </button>
                           )}
+                          {appointment.type === 'Virtual' && appointment.status === 'approved' && appointment.roomID && (
+                            <Link 
+                              to={`/patient/consultation/${appointment.roomID}`}
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-lg hover:shadow-lg transition-all animate-pulse"
+                            >
+                              <FaVideo />
+                              Join Video Call
+                            </Link>
+                          )}
+                          {appointment.paymentStatus === 'pending' && appointment.status !== 'cancelled' && (
+                            <div className="flex gap-2">
+                              <Link 
+                                to={`/patient/pay-esewa/${appointment._id}`}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-[#60bb46] text-white font-bold rounded-lg hover:shadow-lg transition-all"
+                              >
+                                <FaWallet />
+                                Pay (eSewa)
+                              </Link>
+                              <button 
+                                onClick={() => handleCashPayment(appointment._id)}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-[#19456B] text-white font-bold rounded-lg hover:shadow-lg transition-all border border-[#16C79A]/30"
+                              >
+                                <FaDollarSign />
+                                Pay via Cash
+                              </button>
+                            </div>
+                          )}
+                          {appointment.paymentStatus === 'cash_pending' && (
+                            <span className="inline-flex items-center gap-2 px-4 py-2 bg-yellow-500/10 text-yellow-300 font-bold rounded-lg border border-yellow-500/20">
+                              <FaClock />
+                              Cash Pending
+                            </span>
+                          )}
+                          {appointment.paymentStatus === 'paid' && (
+                            <span className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 text-green-400 font-bold rounded-lg border border-green-500/20">
+                              <FaCheck />
+                              Paid
+                            </span>
+                          )}
                           {(appointment.status === 'completed' || appointment.status === 'approved') && (
-                            <button className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#11698E]/10 to-[#11698E]/5 text-[#11698E] font-medium rounded-lg hover:shadow-sm transition-all border border-[#16C79A]/20 hover:border-[#11698E]">
+                            <button 
+                              onClick={() => toast.info('Medical report is being generated. Please check back later.')}
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#11698E]/10 to-[#11698E]/5 text-[#11698E] font-medium rounded-lg hover:shadow-sm transition-all border border-[#16C79A]/20 hover:border-[#11698E]"
+                            >
                               <FaDownload />
                               Report
                             </button>
@@ -366,7 +445,7 @@ const MyAppointments = () => {
                     <div className="mt-4 flex flex-wrap gap-3">
                       <span className="inline-flex items-center gap-1 text-xs px-3 py-1.5 bg-gradient-to-r from-[#0d2c4a] to-[#19456B] text-white/80 rounded-full border border-[#16C79A]/20">
                         <FaMapMarkerAlt className="text-[#16C79A]" size={10} />
-                        Room {appointment.doctorId?.roomNumber || '101'}
+                        Room {appointment.doctorId?.roomNumber || 'N/A'}
                       </span>
                       <span className="inline-flex items-center gap-1 text-xs px-3 py-1.5 bg-gradient-to-r from-[#0d2c4a] to-[#19456B] text-white/80 rounded-full border border-[#16C79A]/20">
                         <FaDollarSign className="text-[#16C79A]" size={10} />
@@ -397,13 +476,13 @@ const MyAppointments = () => {
                   : 'Schedule your first appointment to begin your healthcare journey'}
               </p>
               {(!searchTerm && statusFilter === 'all') && (
-                <a 
-                  href="/patient/book-appointment" 
+                <Link 
+                  to="/patient/book-appointment" 
                   className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#16C79A] to-[#11698E] text-white font-bold rounded-xl hover:shadow-lg transition-all border border-[#16C79A]/30"
                 >
                   <FaCalendarAlt />
                   Book Your First Appointment
-                </a>
+                </Link>
               )}
             </div>
           )}
@@ -458,7 +537,7 @@ const MyAppointments = () => {
                   </div>
                   <div>
                     <label className="text-sm text-[#16C79A]/80">Room Number</label>
-                    <p className="font-semibold text-white">{selectedAppointment.doctorId?.roomNumber || '101'}</p>
+                    <p className="font-semibold text-white">{selectedAppointment.doctorId?.roomNumber || 'N/A'}</p>
                   </div>
                 </div>
               </div>

@@ -11,6 +11,7 @@ import {
   Stethoscope
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import ThemeToggle from '../common/ThemeToggle'
 
 const Sidebar = () => {
   const { user, logout } = useAuth()
@@ -25,16 +26,16 @@ const Sidebar = () => {
   ]
 
   return (
-    <div className="h-screen w-64 bg-gradient-to-b from-[#19456B] to-[#0d2c4a] border-r border-[#16C79A]/20 flex flex-col shadow-xl">
+    <div className="h-screen w-64 bg-gradient-to-b from-white dark:from-[#1E3A8A] to-gray-50 dark:to-[#0F172A] border-r border-gray-200 dark:border-[#2563EB]/20 flex flex-col shadow-xl">
       {/* Logo */}
-      <div className="p-6 border-b border-[#16C79A]/20">
+      <div className="p-6 border-b border-gray-200 dark:border-[#2563EB]/20">
         <div className="flex items-center gap-3">
-          <div className="bg-gradient-to-br from-[#16C79A] to-[#11698E] p-3 rounded-xl shadow-lg">
-            <Stethoscope className="h-6 w-6 text-white" />
+          <div className="bg-gradient-to-br from-[#2563EB] to-[#1E40AF] p-3 rounded-xl shadow-lg">
+            <Stethoscope className="h-6 w-6 text-gray-900 dark:text-white" />
           </div>
           <div>
-            <h1 className="font-bold text-lg text-white"> Swami Dayanand Hospital</h1>
-            <p className="text-sm text-[#16C79A]/80">Doctor Management Portal</p>
+            <h1 className="font-bold text-lg text-gray-900 dark:text-white"> Swami Dayanand Hospital</h1>
+            <p className="text-sm text-[#2563EB]/80">Doctor Management Portal</p>
           </div>
         </div>
       </div>
@@ -51,8 +52,8 @@ const Sidebar = () => {
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
                     isActive
-                      ? 'bg-gradient-to-r from-[#16C79A] to-[#11698E] text-white shadow-lg'
-                      : 'text-gray-300 hover:bg-white/10 hover:text-white'
+                      ? 'bg-gradient-to-r from-[#2563EB] to-[#1E40AF] text-gray-900 dark:text-white shadow-lg'
+                      : 'text-gray-300 hover:bg-white/10 hover:text-gray-900 dark:text-white'
                   }`
                 }
               >
@@ -63,24 +64,28 @@ const Sidebar = () => {
           ))}
         </ul>
       </nav>
-            {/* User Info */}
-      <div className="p-6 border-b border-[#16C79A]/20">
-        <div className="flex items-center gap-3">
-          <div className="h-12 w-12 bg-gradient-to-br from-[#16C79A] to-[#11698E] rounded-full flex items-center justify-center shadow-lg">
-            <User className="h-6 w-6 text-white" />
+      {/* User Info */}
+      <div className="p-6 border-b border-gray-200 dark:border-[#2563EB]/20">
+        <NavLink to="/profile" className="flex items-center gap-3 hover:bg-gradient-to-r hover:from-[#2563EB]/5 hover:to-[#1E40AF]/5 p-2 -mx-2 rounded-xl transition-all cursor-pointer group">
+          <div className="h-12 w-12 bg-gradient-to-br from-[#2563EB] to-[#1E40AF] rounded-full flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
+            <User className="h-6 w-6 text-gray-900 dark:text-white" />
           </div>
           <div>
-            <p className="font-medium text-white">Dr. {user?.name}</p>
-            <p className="text-sm text-[#16C79A]/80">{user?.specialization}</p>
+            <p className="font-medium text-gray-900 dark:text-white group-hover:text-[#2563EB] transition-colors">Dr. {user?.name}</p>
+            <p className="text-sm text-[#2563EB]/80">{user?.specialization}</p>
           </div>
-        </div>
+        </NavLink>
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-[#16C79A]/20">
+      <div className="p-4 border-t border-gray-200 dark:border-[#2563EB]/20">
+        <div className="flex items-center justify-between px-4 py-3 mb-2">
+          <span className="text-sm font-medium text-gray-600 dark:text-white/70">Theme</span>
+          <ThemeToggle />
+        </div>
         <button
           onClick={logout}
-          className="flex items-center gap-3 px-4 py-3 text-[#16C79A] hover:text-white hover:bg-gradient-to-r from-[#16C79A]/10 to-[#11698E]/10 rounded-xl w-full transition-all duration-300"
+          className="flex items-center gap-3 px-4 py-3 text-[#2563EB] hover:text-gray-900 dark:text-white hover:bg-gradient-to-r from-[#2563EB]/10 to-[#1E40AF]/10 rounded-xl w-full transition-all duration-300"
         >
           <LogOut className="h-5 w-5" />
           <span>Logout</span>

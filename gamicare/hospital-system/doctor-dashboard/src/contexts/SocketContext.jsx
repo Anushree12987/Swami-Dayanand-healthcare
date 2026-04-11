@@ -27,7 +27,7 @@ export const SocketProvider = ({ children }) => {
     }
 
     const user = JSON.parse(userStr);
-    const socketUrl = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
+    const socketUrl = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5001';
 
     console.log('🔌 Connecting to socket server:', socketUrl);
 

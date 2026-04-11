@@ -24,7 +24,7 @@ export const AuthProvider = ({ children }) => {
 
     try {
       const response = await axios.get(
-        'http://localhost:5000/api/auth/me',
+        'http://localhost:5001/api/auth/me',
         {
           headers: { Authorization: `Bearer ${token}` }
         }
@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const response = await axios.post(
-      'http://localhost:5000/api/auth/admin/login',
+      'http://localhost:5001/api/auth/admin/login',
       { email, password }
     );
 

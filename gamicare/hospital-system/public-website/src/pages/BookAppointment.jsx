@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   FaSearch, 
   FaCalendarAlt, 
@@ -20,15 +20,19 @@ import { useAuth } from '../contexts/AuthContext';
 const BookAppointment = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { preSelectedDoctor } = location.state || {};
+
   const [doctors, setDoctors] = useState([]);
-  const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [selectedDoctor, setSelectedDoctor] = useState(preSelectedDoctor || null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecialization, setSelectedSpecialization] = useState('all');
   const [formData, setFormData] = useState({
     date: '',
     time: '',
-    symptoms: ''
+    symptoms: '',
+    type: 'In-person'
   });
   const [availableSlots, setAvailableSlots] = useState([]);
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -45,22 +49,19 @@ const BookAppointment = () => {
 
   const fetchDoctors = async () => {
     try {
-      console.log('Fetching doctors...');
-      const response = await axios.get('http://localhost:5000/api/doctors');
-      console.log('API Response:', response);
-      console.log('Response data:', response.data);
+      setLoading(true);
+      const response = await axios.get('http://localhost:5001/api/doctors');
       
-      if (Array.isArray(response.data)) {
-        setDoctors(response.data);
-      } else if (response.data && Array.isArray(response.data.doctors)) {
-        setDoctors(response.data.doctors);
-      } else if (response.data && response.data.data) {
-        setDoctors(Array.isArray(response.data.data) ? response.data.data : []);
+      const doctorData = response.data.data || response.data.doctors || (Array.isArray(response.data) ? response.data : []);
+      
+      if (Array.isArray(doctorData)) {
+        setDoctors(doctorData);
       } else {
-        console.warn('Unexpected response format:', response.data);
+        console.error('Invalid doctor data format:', response.data);
+        toast.error('Failed to load doctors list');
         setDoctors([]);
       }
-      
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching doctors:', error);
       toast.error('Failed to load doctors');
@@ -99,10 +100,11 @@ const BookAppointment = () => {
         doctorId: selectedDoctor._id,
         date: formData.date,
         time: formData.time,
-        symptoms: formData.symptoms
+        symptoms: formData.symptoms,
+        type: formData.type
       };
 
-      await axios.post('http://localhost:5000/api/appointments', appointmentData, config);
+      await axios.post('http://localhost:5001/api/appointments', appointmentData, config);
       
       toast.success('Appointment booked successfully!', {
         duration: 4000,
@@ -365,13 +367,59 @@ const BookAppointment = () => {
                 <div className="relative">
                   <input
                     type="date"
-                    className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#16C79A] focus:border-transparent text-white placeholder:text-[#16C79A]/60"
+                    className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#16C79A] focus:border-transparent text-white"
+                    style={{ colorScheme: 'dark' }}
                     min={today}
                     value={formData.date}
+                    onClick={(e) => {
+                      if (!selectedDoctor) {
+                        toast.error('Please select a doctor from the list first to see their availability!');
+                        e.preventDefault();
+                      }
+                    }}
                     onChange={(e) => setFormData({...formData, date: e.target.value})}
                     required
-                    disabled={!selectedDoctor}
                   />
+                  {!selectedDoctor && (
+                    <div className="absolute inset-0 z-10 cursor-not-allowed" onClick={() => toast.error('Please select a doctor first before picking a date')}></div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-white mb-3">
+                  <div className="flex items-center gap-2">
+                    <FaCalendarDay className="text-[#16C79A]" />
+                    Appointment Type
+                  </div>
+                </label>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({...formData, type: 'In-person'})}
+                    className={`p-4 border rounded-xl flex flex-col items-center gap-2 transition-all ${
+                      formData.type === 'In-person'
+                        ? 'bg-gradient-to-r from-[#16C79A] to-[#11698E] text-white border-transparent shadow-lg scale-[1.02]'
+                        : 'bg-gradient-to-r from-[#0d2c4a] to-[#19456B] text-white/70 border-[#16C79A]/20 hover:border-[#16C79A]'
+                    }`}
+                  >
+                    <span className="text-2xl">🏥</span>
+                    <span className="font-bold">In-person</span>
+                    <span className="text-xs opacity-70">At the hospital</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({...formData, type: 'Virtual'})}
+                    className={`p-4 border rounded-xl flex flex-col items-center gap-2 transition-all ${
+                      formData.type === 'Virtual'
+                        ? 'bg-gradient-to-r from-[#16C79A] to-[#11698E] text-white border-transparent shadow-lg scale-[1.02]'
+                        : 'bg-gradient-to-r from-[#0d2c4a] to-[#19456B] text-white/70 border-[#16C79A]/20 hover:border-[#16C79A]'
+                    }`}
+                  >
+                    <span className="text-2xl">💻</span>
+                    <span className="font-bold">Virtual</span>
+                    <span className="text-xs opacity-70">Live Video Call</span>
+                  </button>
                 </div>
               </div>
 
@@ -437,6 +485,12 @@ const BookAppointment = () => {
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
+                      <span className="text-[#16C79A]/80">Type:</span>
+                      <span className={`font-bold ${formData.type === 'Virtual' ? 'text-blue-400' : 'text-white'}`}>
+                        {formData.type}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
                       <span className="text-[#16C79A]/80">Specialization:</span>
                       <span className="font-medium text-[#16C79A]">
                         {selectedDoctor?.specialization || '—'}
@@ -445,7 +499,7 @@ const BookAppointment = () => {
                     <div className="flex justify-between items-center">
                       <span className="text-[#16C79A]/80">Date:</span>
                       <span className="font-medium text-white">
-                        {formData.date ? new Date(formData.date).toLocaleDateString('', { 
+                        {formData.date && !isNaN(new Date(formData.date).getTime()) ? new Date(formData.date).toLocaleDateString('en-IN', { 
                           weekday: 'short', 
                           year: 'numeric', 
                           month: 'short', 
@@ -456,6 +510,10 @@ const BookAppointment = () => {
                     <div className="flex justify-between items-center">
                       <span className="text-[#16C79A]/80">Time:</span>
                       <span className="font-medium text-white">{formData.time || 'Not selected'}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#16C79A]/80">Room Number:</span>
+                      <span className="font-medium text-white">{selectedDoctor?.roomNumber || 'N/A'}</span>
                     </div>
                     <div className="pt-3 border-t border-[#16C79A]/20">
                       <div className="flex justify-between items-center">

@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react'
-import { Calendar, Clock, User, ChevronLeft, ChevronRight, Plus, Edit, CalendarDays, Activity } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Calendar, Clock, User, ChevronLeft, ChevronRight, Plus, Edit, CalendarDays, Activity, MapPin } from 'lucide-react'
 import { format, addDays, subDays, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay } from 'date-fns'
 import { appointmentService } from '../services/appointmentService'
+import { useAuth } from '../contexts/AuthContext'
 import LoadingSpinner from '../components/common/LoadingSpinner'
 import { toast } from 'react-toastify'
 
 const Schedule = () => {
+  const { user } = useAuth()
+  const navigate = useNavigate()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState('day')
   const [appointments, setAppointments] = useState([])
@@ -326,15 +330,20 @@ const Schedule = () => {
               )}
 
               <div className="bg-gradient-to-r from-[#11698E]/10 to-[#19456B]/10 p-3 rounded-xl">
-                <p className="text-sm text-[#16C79A]/80">Contact</p>
-                <p className="font-medium text-white">{appointment.patientId?.phone || 'Not provided'}</p>
+                <p className="text-sm text-[#16C79A]/80">Contact & Location</p>
+                <div className="flex flex-col gap-1 mt-1">
+                  <p className="font-medium text-white">{appointment.patientId?.phone || 'Not provided'}</p>
+                  <p className="text-xs text-[#16C79A]/80 flex items-center gap-1">
+                    <MapPin size={10} /> Room {user?.roomNumber || 'N/A'}
+                  </p>
+                </div>
               </div>
             </div>
 
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => {
-                  window.location.href = `/appointments?id=${appointment._id}`
+                  navigate(`/appointments?id=${appointment._id}`)
                 }}
                 className="flex-1 px-4 py-3 border border-[#16C79A] text-[#16C79A] rounded-xl hover:bg-gradient-to-r from-[#16C79A]/10 to-[#11698E]/10 transition-all duration-300"
               >
@@ -387,7 +396,7 @@ const Schedule = () => {
           </div>
 
           <button
-            onClick={() => window.location.href = '/availability'}
+            onClick={() => navigate('/availability')}
             className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-[#16C79A] to-[#11698E] text-white rounded-xl hover:opacity-90 transition-all duration-300"
           >
             <Plus className="h-4 w-4" />

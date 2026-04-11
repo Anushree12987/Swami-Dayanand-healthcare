@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaEdit, FaSave, FaLock, FaCalendarAlt, FaShieldAlt, FaCheckCircle } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
 const Profile = () => {
-  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { user, login } = useAuth(); // Assuming login or a similar update function can refresh the user
   const [editing, setEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    address: ''
+    address: '',
+    medicalInfo: {
+      bloodType: '',
+      allergies: '',
+      chronicConditions: '',
+      currentMedications: ''
+    }
   });
   const [changePassword, setChangePassword] = useState({
     currentPassword: '',
@@ -20,13 +28,21 @@ const Profile = () => {
     confirmPassword: ''
   });
 
+  const fileInputRef = React.useRef(null);
+
   useEffect(() => {
     if (user) {
       setFormData({
         name: user.name || '',
         email: user.email || '',
         phone: user.phone || '',
-        address: user.address || ''
+        address: user.address || '',
+        medicalInfo: {
+          bloodType: user.medicalInfo?.bloodType || 'Not provided',
+          allergies: user.medicalInfo?.allergies || 'None known',
+          chronicConditions: user.medicalInfo?.chronicConditions || 'None',
+          currentMedications: user.medicalInfo?.currentMedications || 'None'
+        }
       });
     }
   }, [user]);
@@ -39,11 +55,47 @@ const Profile = () => {
         headers: { Authorization: `Bearer ${token}` }
       };
 
-      await axios.put('http://localhost:5000/api/users/profile', formData, config);
+      const response = await axios.put('http://localhost:5001/api/users/profile', formData, config);
       toast.success('Profile updated successfully');
+      
       setEditing(false);
+      // Short delay before reload so user can see the toast
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
     } catch (error) {
-      toast.error('Failed to update profile');
+      toast.error(error.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('photo', file);
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const config = {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      };
+
+      await axios.post('http://localhost:5001/api/users/upload-photo', formData, config);
+      toast.success('Photo updated successfully');
+      
+      // Short delay before reload
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error) {
+      toast.error('Failed to upload photo');
     } finally {
       setLoading(false);
     }
@@ -62,7 +114,7 @@ const Profile = () => {
         headers: { Authorization: `Bearer ${token}` }
       };
 
-      await axios.put('http://localhost:5000/api/users/change-password', {
+      await axios.put('http://localhost:5001/api/users/change-password', {
         currentPassword: changePassword.currentPassword,
         newPassword: changePassword.newPassword
       }, config);
@@ -78,6 +130,12 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString('en-IN', options);
   };
 
   return (
@@ -238,27 +296,72 @@ const Profile = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="text-sm font-medium text-[#16C79A]/80 mb-2">Blood Type</label>
-                  <div className="p-3 bg-gradient-to-r from-[#0d2c4a] to-[#19456B] border border-[#16C79A]/20 rounded-xl text-white">
-                    O+
-                  </div>
+                  {editing ? (
+                    <select
+                      className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
+                      value={formData.medicalInfo.bloodType}
+                      onChange={(e) => setFormData({...formData, medicalInfo: {...formData.medicalInfo, bloodType: e.target.value}})}
+                    >
+                      <option value="Not provided">Select Blood Type</option>
+                      <option value="A+">A+</option>
+                      <option value="A-">A-</option>
+                      <option value="B+">B+</option>
+                      <option value="B-">B-</option>
+                      <option value="AB+">AB+</option>
+                      <option value="AB-">AB-</option>
+                      <option value="O+">O+</option>
+                      <option value="O-">O-</option>
+                    </select>
+                  ) : (
+                    <div className="p-3 bg-gradient-to-r from-[#0d2c4a] to-[#19456B] border border-[#16C79A]/20 rounded-xl text-white">
+                      {formData.medicalInfo.bloodType}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-[#16C79A]/80 mb-2">Allergies</label>
-                  <div className="p-3 bg-gradient-to-r from-[#0d2c4a] to-[#19456B] border border-[#16C79A]/20 rounded-xl text-white">
-                    None known
-                  </div>
+                  {editing ? (
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
+                      value={formData.medicalInfo.allergies}
+                      onChange={(e) => setFormData({...formData, medicalInfo: {...formData.medicalInfo, allergies: e.target.value}})}
+                    />
+                  ) : (
+                    <div className="p-3 bg-gradient-to-r from-[#0d2c4a] to-[#19456B] border border-[#16C79A]/20 rounded-xl text-white">
+                      {formData.medicalInfo.allergies}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-[#16C79A]/80 mb-2">Chronic Conditions</label>
-                  <div className="p-3 bg-gradient-to-r from-[#0d2c4a] to-[#19456B] border border-[#16C79A]/20 rounded-xl text-white">
-                    None
-                  </div>
+                  {editing ? (
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
+                      value={formData.medicalInfo.chronicConditions}
+                      onChange={(e) => setFormData({...formData, medicalInfo: {...formData.medicalInfo, chronicConditions: e.target.value}})}
+                    />
+                  ) : (
+                    <div className="p-3 bg-gradient-to-r from-[#0d2c4a] to-[#19456B] border border-[#16C79A]/20 rounded-xl text-white">
+                      {formData.medicalInfo.chronicConditions}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="text-sm font-medium text-[#16C79A]/80 mb-2">Current Medications</label>
-                  <div className="p-3 bg-gradient-to-r from-[#0d2c4a] to-[#19456B] border border-[#16C79A]/20 rounded-xl text-white">
-                    None
-                  </div>
+                  {editing ? (
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
+                      value={formData.medicalInfo.currentMedications}
+                      onChange={(e) => setFormData({...formData, medicalInfo: {...formData.medicalInfo, currentMedications: e.target.value}})}
+                    />
+                  ) : (
+                    <div className="p-3 bg-gradient-to-r from-[#0d2c4a] to-[#19456B] border border-[#16C79A]/20 rounded-xl text-white">
+                      {formData.medicalInfo.currentMedications}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -272,14 +375,38 @@ const Profile = () => {
             <div className="flex flex-col items-center">
               <div className="relative mb-4">
                 <div className="absolute -inset-1 bg-gradient-to-r from-[#16C79A] to-[#11698E] rounded-full blur-sm opacity-30"></div>
-                <div className="relative w-32 h-32 rounded-full bg-gradient-to-r from-[#16C79A] to-[#11698E] flex items-center justify-center text-white font-bold text-4xl border-4 border-[#19456B]">
-                  {user?.name?.charAt(0) || 'P'}
-                </div>
+                {user?.profilePicture ? (
+                  <img 
+                    src={`http://localhost:5001${user.profilePicture}`} 
+                    alt="Profile" 
+                    className="relative w-32 h-32 rounded-full border-4 border-[#19456B] object-cover"
+                  />
+                ) : (
+                  <div className="relative w-32 h-32 rounded-full bg-gradient-to-r from-[#16C79A] to-[#11698E] flex items-center justify-center text-white font-bold text-4xl border-4 border-[#19456B]">
+                    {user?.name?.charAt(0) || 'P'}
+                  </div>
+                )}
+                {loading && (
+                    <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                    </div>
+                )}
               </div>
               <h3 className="text-lg font-semibold text-white">{user?.name}</h3>
               <p className="text-[#16C79A]">Patient</p>
-              <div className="mt-4">
-                <button className="w-full px-4 py-3 bg-gradient-to-r from-[#16C79A]/10 to-[#11698E]/10 text-[#16C79A] font-medium rounded-xl hover:bg-gradient-to-r hover:from-[#16C79A]/20 hover:to-[#11698E]/20 transition-all duration-300 border border-[#16C79A]/20">
+              <div className="mt-4 w-full">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                  accept="image/*"
+                />
+                <button 
+                  onClick={() => fileInputRef.current.click()}
+                  disabled={loading}
+                  className="w-full px-4 py-3 bg-gradient-to-r from-[#16C79A]/10 to-[#11698E]/10 text-[#16C79A] font-medium rounded-xl hover:bg-gradient-to-r hover:from-[#16C79A]/20 hover:to-[#11698E]/20 transition-all duration-300 border border-[#16C79A]/20"
+                >
                   Change Photo
                 </button>
               </div>
@@ -349,17 +476,17 @@ const Profile = () => {
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-[#16C79A]/80">Account Created:</span>
-                <span className="font-medium text-white">March 15, 2024</span>
+                <span className="font-medium text-white">{formatDate(user?.createdAt)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[#16C79A]/80">Status:</span>
-                <span className="px-3 py-1 bg-gradient-to-r from-[#16C79A]/20 to-[#16C79A]/10 text-[#16C79A] text-xs font-medium rounded-full border border-[#16C79A]/20">
-                  Active
+                <span className={`px-3 py-1 bg-gradient-to-r ${user?.isActive ? 'from-[#16C79A]/20 to-[#16C79A]/10 text-[#16C79A]' : 'from-red-500/20 to-red-500/10 text-red-400'} text-xs font-medium rounded-full border border-[#16C79A]/20`}>
+                  {user?.isActive ? 'Active' : 'Inactive'}
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-[#16C79A]/80">Last Login:</span>
-                <span className="font-medium text-white">Today, 10:30 AM</span>
+                <span className="text-[#16C79A]/80">Last Updated:</span>
+                <span className="font-medium text-white">{formatDate(user?.updatedAt)}</span>
               </div>
             </div>
           </div>
@@ -376,18 +503,13 @@ const Profile = () => {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-[#16C79A]/80">Total Appointments:</span>
-                <span className="font-bold text-white">12</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[#16C79A]/80">Completed:</span>
-                <span className="font-bold text-emerald-400">8</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-[#16C79A]/80">Upcoming:</span>
-                <span className="font-bold text-[#16C79A]">3</span>
+                <span className="font-bold text-white">{user?.totalAppointments || 0}</span>
               </div>
               <div className="pt-3 border-t border-[#16C79A]/20">
-                <button className="w-full px-4 py-3 bg-gradient-to-r from-[#16C79A]/10 to-[#11698E]/10 text-[#16C79A] font-medium rounded-xl hover:bg-gradient-to-r hover:from-[#16C79A]/20 hover:to-[#11698E]/20 transition-all duration-300 border border-[#16C79A]/20">
+                <button
+                    onClick={() => navigate('/patient/appointments')} 
+                    className="w-full px-4 py-3 bg-gradient-to-r from-[#16C79A]/10 to-[#11698E]/10 text-[#16C79A] font-medium rounded-xl hover:bg-gradient-to-r hover:from-[#16C79A]/20 hover:to-[#11698E]/20 transition-all duration-300 border border-[#16C79A]/20"
+                >
                   View Medical History
                 </button>
               </div>

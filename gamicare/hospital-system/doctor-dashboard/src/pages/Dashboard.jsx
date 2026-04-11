@@ -11,9 +11,11 @@ import {
   Bell,
   User,
   Activity,
-  Stethoscope
+  Stethoscope,
+  MapPin
 } from 'lucide-react'
 import { appointmentService } from '../services/appointmentService'
+import { notificationService } from '../services/notificationService'
 import { useAuth } from '../contexts/AuthContext'
 import AppointmentList from '../components/appointments/AppointmentList'
 import LoadingSpinner from '../components/common/LoadingSpinner'
@@ -28,6 +30,7 @@ const Dashboard = () => {
     cancelled: 0
   })
   const [todayAppointments, setTodayAppointments] = useState([])
+  const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
@@ -75,6 +78,10 @@ const Dashboard = () => {
         approved: appointments.filter(a => a.status === 'approved').length,
         cancelled: appointments.filter(a => a.status === 'cancelled').length
       })
+
+      // Fetch notifications
+      const notifData = await notificationService.getNotifications({ limit: 5 })
+      setNotifications(notifData.notifications || [])
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
       setError('Failed to load dashboard data')
@@ -218,6 +225,19 @@ const Dashboard = () => {
                     <div>
                       <h3 className="font-medium text-white">{appointment.patientId?.name}</h3>
                       <p className="text-sm text-[#16C79A]/80">{appointment.time} • {appointment.symptoms?.slice(0, 50)}...</p>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded border ${
+                          appointment.paymentStatus === 'paid' 
+                            ? 'bg-green-500/10 text-green-400 border-green-500/20' 
+                            : 'bg-red-500/10 text-red-300 border-red-500/20'
+                        }`}>
+                          {appointment.paymentStatus === 'paid' ? 'Paid' : 'Unpaid'}
+                        </span>
+                        <span className="flex items-center gap-1 text-[10px] text-[#16C79A]/80">
+                          <MapPin size={10} />
+                          Room {user?.roomNumber || 'N/A'}
+                        </span>
+                      </div>
                     </div>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                       appointment.status === 'approved' ? 'bg-gradient-to-r from-[#16C79A]/20 to-[#11698E]/20 text-[#16C79A]' :
@@ -311,53 +331,38 @@ const Dashboard = () => {
           </div>
           
           <div className="space-y-4">
-            <div className="bg-gradient-to-r from-[#16C79A]/10 to-[#11698E]/10 p-4 rounded-xl border border-[#16C79A]/20">
-              <div className="flex items-start gap-4">
-                <div className="p-2 rounded-lg bg-gradient-to-r from-[#16C79A]/20 to-[#11698E]/20">
-                  <Calendar className="h-5 w-5 text-[#16C79A]" />
+            {notifications.length > 0 ? (
+              notifications.map((notif) => (
+                <div key={notif._id} className={`bg-gradient-to-r from-[#16C79A]/10 to-[#11698E]/10 p-4 rounded-xl border border-[#16C79A]/20 ${notif.isRead ? 'opacity-70' : ''}`}>
+                  <div className="flex items-start gap-4">
+                    <div className="p-2 rounded-lg bg-gradient-to-r from-[#16C79A]/20 to-[#11698E]/20">
+                      {notif.type === 'appointment' ? <Calendar className="h-5 w-5 text-[#16C79A]" /> : <Bell className="h-5 w-5 text-[#16C79A]" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-white">{notif.title}</p>
+                      <p className="text-sm text-[#16C79A]/80 mt-1">{notif.message}</p>
+                      <p className="text-xs text-[#16C79A]/60 mt-2">{new Date(notif.createdAt).toLocaleString()}</p>
+                    </div>
+                    {!notif.isRead && (
+                      <button 
+                        onClick={async () => {
+                          await notificationService.markAsRead(notif._id);
+                          fetchDashboardData();
+                        }}
+                        className="px-3 py-1 bg-gradient-to-r from-[#16C79A] to-[#11698E] text-white text-xs rounded-lg hover:opacity-90 transition-all font-bold"
+                      >
+                        Read
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="font-medium text-white">New Appointment Request</p>
-                  <p className="text-sm text-[#16C79A]/80 mt-1">John Doe requested an appointment for tomorrow at 2:00 PM</p>
-                  <p className="text-xs text-[#16C79A]/60 mt-2">10 minutes ago</p>
-                </div>
-                <button className="px-3 py-1 bg-gradient-to-r from-[#16C79A] to-[#11698E] text-white text-xs rounded-lg hover:opacity-90 transition-all">
-                  Review
-                </button>
+              ))
+            ) : (
+              <div className="text-center py-6">
+                <Bell className="h-12 w-12 text-[#16C79A]/30 mx-auto mb-2" />
+                <p className="text-gray-400">No new notifications</p>
               </div>
-            </div>
-            
-            <div className="bg-gradient-to-r from-[#16C79A]/10 to-[#11698E]/10 p-4 rounded-xl border border-[#16C79A]/20">
-              <div className="flex items-start gap-4">
-                <div className="p-2 rounded-lg bg-gradient-to-r from-[#16C79A]/20 to-[#11698E]/20">
-                  <CheckCircle className="h-5 w-5 text-[#16C79A]" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-white">Appointment Confirmed</p>
-                  <p className="text-sm text-[#16C79A]/80 mt-1">Sarah Johnson confirmed her appointment for today at 4:30 PM</p>
-                  <p className="text-xs text-[#16C79A]/60 mt-2">2 hours ago</p>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-gradient-to-r from-[#16C79A]/10 to-[#11698E]/10 p-4 rounded-xl border border-[#16C79A]/20">
-              <div className="flex items-start gap-4">
-                <div className="p-2 rounded-lg bg-gradient-to-r from-[#16C79A]/20 to-[#11698E]/20">
-                  <AlertCircle className="h-5 w-5 text-[#16C79A]" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-white">Schedule Reminder</p>
-                  <p className="text-sm text-[#16C79A]/80 mt-1">You have 3 pending appointment requests waiting for your review</p>
-                  <p className="text-xs text-[#16C79A]/60 mt-2">5 hours ago</p>
-                </div>
-                <Link 
-                  to="/appointments?status=pending" 
-                  className="px-3 py-1 bg-gradient-to-r from-yellow-500 to-amber-600 text-white text-xs rounded-lg hover:opacity-90 transition-all"
-                >
-                  Review Now
-                </Link>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

@@ -6,7 +6,7 @@ import Footer from './Footer' // Now this import will work
 
 const Layout = () => {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0F172A] transition-colors duration-300">
       <div className="flex">
         {/* Sidebar - Desktop */}
         <aside className="hidden lg:block">

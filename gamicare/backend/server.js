@@ -18,6 +18,8 @@ const doctorRoutes = require('./routes/doctorRoutes');
 const symptomRoutes = require('./routes/symptoms'); // match the file above
 const notificationRoutes = require('./routes/notifications');
 const reportRoutes = require('./routes/reports'); // ← Add this for reports API
+const paymentRoutes = require('./routes/paymentRoutes');
+const { startReminderJob } = require('./cron/reminderJob');
 
 const app = express();
 
@@ -30,6 +32,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Database connection
 connectDB();
+
+// Start appointment reminder cron job
+startReminderJob();
 
 // Serve static React build files in production
 if (process.env.NODE_ENV === 'production') {
@@ -44,6 +49,11 @@ app.use('/api/doctors', doctorRoutes);
 app.use('/api/symptoms', symptomRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/reports', reportRoutes); // ← Add this for reports
+app.use('/api/payments', paymentRoutes);
+app.use('/api/users', require('./routes/userRoutes')); // ← Added this for user profiles
+
+// Static files for profile pictures
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -66,6 +76,6 @@ app.use((err, req, res, next) => {
     });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

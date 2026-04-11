@@ -19,6 +19,12 @@ const Login = () => {
     if (isAuthenticated) {
       navigate('/dashboard')
     }
+    // Load remembered email
+    const savedEmail = localStorage.getItem('rememberedEmail')
+    if (savedEmail) {
+      setEmail(savedEmail)
+      setRememberMe(true)
+    }
   }, [isAuthenticated, navigate])
 
   const validateForm = () => {
@@ -50,6 +56,14 @@ const Login = () => {
     setLoading(true)
     try {
       await login(email, password)
+      
+      // Save email if Remember Me is checked
+      if (rememberMe) {
+        localStorage.setItem('rememberedEmail', email)
+      } else {
+        localStorage.removeItem('rememberedEmail')
+      }
+
       toast.success('Login successful!')
       navigate('/dashboard')
     } catch (error) {
@@ -105,6 +119,9 @@ const Login = () => {
                 </div>
                 <input
                   type="email"
+                  id="email"
+                  name="email"
+                  autocomplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className={`w-full bg-gradient-to-r from-[#11698E]/10 to-[#19456B]/10 pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-[#16C79A] focus:border-[#16C79A] transition-all duration-300 text-black placeholder-[#16C79A]/50 ${
@@ -129,6 +146,9 @@ const Login = () => {
                 </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  name="password"
+                  autocomplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className={`w-full bg-gradient-to-r from-[#11698E]/10 to-[#19456B]/10 pl-10 pr-12 py-3 border  rounded-xl focus:ring-2 focus:ring-[#16C79A] focus:border-[#16C79A] transition-all duration-300 text-black placeholder-[#16C79A]/50 ${

@@ -14,6 +14,10 @@ import BookAppointment from './pages/BookAppointment';
 import MyAppointments from './pages/MyAppointments';
 import SymptomChecker from './pages/SymptomChecker';
 import Profile from './pages/Profile';
+import ConsultationRoom from './pages/ConsultationRoom';
+import EsewaPayment from './pages/EsewaPayment';
+import PaymentSuccess from './pages/PaymentSuccess';
+import PaymentFailure from './pages/PaymentFailure';
 
 // Layouts
 import WebsiteLayout from './components/layouts/WebsiteLayout';
@@ -46,6 +50,10 @@ function App() {
             <Route path="book-appointment" element={<BookAppointment />} />
             <Route path="appointments" element={<MyAppointments />} />
             <Route path="profile" element={<Profile />} />
+            <Route path="consultation/:roomID" element={<ConsultationRoom />} />
+            <Route path="pay-esewa/:appointmentId" element={<EsewaPayment />} />
+            <Route path="payment-success" element={<PaymentSuccess />} />
+            <Route path="payment-failure" element={<PaymentFailure />} />
           </Route>
 
           {/* Redirect */}

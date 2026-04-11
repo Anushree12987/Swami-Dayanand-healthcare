@@ -25,14 +25,18 @@ const Home = () => {
 
   const fetchDoctors = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/users/doctors');
-      const doctorsWithRatings = response.data.slice(0, 4).map(doctor => ({
-        ...doctor,
-        rating: (Math.random() * 0.5 + 4.5).toFixed(1),
-        patients: Math.floor(Math.random() * 1000) + 500,
-        experience: Math.floor(Math.random() * 15) + 5,
-      }));
-      setDoctors(doctorsWithRatings);
+      const response = await axios.get('http://localhost:5001/api/doctors');
+      const doctorData = response.data.data || response.data;
+      
+      if (Array.isArray(doctorData)) {
+        const doctorsWithRatings = doctorData.slice(0, 4).map(doctor => ({
+          ...doctor,
+          rating: (Math.random() * 0.5 + 4.5).toFixed(1),
+          patients: Math.floor(Math.random() * 1000) + 500,
+          experience: Math.floor(Math.random() * 15) + 5,
+        }));
+        setDoctors(doctorsWithRatings);
+      }
     } catch (error) {
       console.error('Error fetching doctors:', error);
       // Mock data for demo

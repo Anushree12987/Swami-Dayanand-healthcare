@@ -20,6 +20,7 @@ router.post('/doctor/login', doctorLogin);
 
 // Protected route to get current user (used by frontend to verify token)
 router.get('/me', authMiddleware, getCurrentUser);
+router.get('/verify', authMiddleware, getCurrentUser); // Added this to match AuthContext.jsx expecttaions
 
 // Example of protected admin route
 router.get('/admin/dashboard', authMiddleware, requireRole(['admin']), (req, res) => {

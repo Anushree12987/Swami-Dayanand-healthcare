@@ -5,68 +5,68 @@ const path = require("path");
 
 const router = express.Router();
 
-// Function to suggest doctor based on disease or symptoms
-const getSuggestedDoctor = (disease, userSymptoms) => {
+const User = require("../models/User");
+
+// Function to suggest specializations based on disease or symptoms
+const getSuggestedSpecializations = (disease, userSymptoms) => {
   const d = (disease || "").toLowerCase();
-  const doctors = new Set();
+  const specializations = new Set();
 
-  // Disease-based doctors
-  if (d.match(/heart|cardio|arrhythmia|hypertension|cholesterol/)) doctors.add("Cardiologist");
-  if (d.match(/lung|pneumonia|asthma|bronchitis|respiratory/)) doctors.add("Pulmonologist");
-  if (d.match(/brain|headache|migraine|anxiety|panic|depression|neuropathy/)) doctors.add("Neurologist / Psychiatrist");
-  if (d.match(/diabetes|insulin|glycemia/)) doctors.add("Endocrinologist");
-  if (d.match(/skin|rash|dermatitis|eczema|psoriasis|infection of the skin/)) doctors.add("Dermatologist");
-  if (d.match(/arthritis|joint|bone|fracture|osteoporosis/)) doctors.add("Orthopedic Surgeon");
-  if (d.match(/glaucoma|vision|eye/)) doctors.add("Ophthalmologist");
-  if (d.match(/ear|hearing|labyrinthitis|meniere/)) doctors.add("ENT Specialist");
-  if (d.match(/throat|tonsil|laryngitis|vocal/)) doctors.add("ENT Specialist");
-  if (d.match(/kidney|renal|hydronephrosis/)) doctors.add("Nephrologist / Urologist");
-  if (d.match(/abdomen|stomach|digestive|liver|gastritis|ulcer/)) doctors.add("Gastroenterologist");
-  if (d.match(/poisoning/)) doctors.add("Emergency Medicine / Toxicologist");
+  // Disease-based mapping
+  if (d.match(/heart|cardio|arrhythmia|hypertension|cholesterol/)) specializations.add("Cardiology");
+  if (d.match(/lung|pneumonia|asthma|bronchitis|respiratory/)) specializations.add("General Medicine"); // Or Pulmonology if added
+  if (d.match(/brain|headache|migraine|neuropathy/)) specializations.add("Neurology");
+  if (d.match(/anxiety|panic|depression|stress/)) specializations.add("Psychiatry");
+  if (d.match(/diabetes|insulin|glycemia/)) specializations.add("General Medicine");
+  if (d.match(/skin|rash|dermatitis|eczema|psoriasis|infection of the skin/)) specializations.add("Dermatology");
+  if (d.match(/arthritis|joint|bone|fracture|osteoporosis/)) specializations.add("Orthopedics");
+  if (d.match(/glaucoma|vision|eye/)) specializations.add("General Medicine"); // Or Ophthalmology
+  if (d.match(/ear|hearing|throat|tonsil|laryngitis/)) specializations.add("General Medicine"); // Or ENT
+  if (d.match(/kidney|renal|hydronephrosis/)) specializations.add("General Medicine");
+  if (d.match(/abdomen|stomach|digestive|liver|gastritis|ulcer/)) specializations.add("General Medicine"); // Or Gastroenterology
+  if (d.match(/child|pediatric|infant/)) specializations.add("Pediatrics");
+  if (d.match(/women|pregnancy|gyneco/)) specializations.add("Gynecology");
 
-  // Symptom-based doctors
+  // Symptom-based mapping
   const symptomMap = {
-    "headache": "General Physician / Neurologist",
-    "fever": "General Physician",
-    "cough": "Pulmonologist / General Physician",
-    "cold": "General Physician",
-    "sore throat": "ENT Specialist / General Physician",
-    "stomach pain": "Gastroenterologist / General Physician",
-    "gastritis": "Gastroenterologist",
-    "nausea": "Gastroenterologist / General Physician",
-    "vomiting": "Gastroenterologist / General Physician",
-    "diarrhea": "Gastroenterologist / General Physician",
-    "rash": "Dermatologist",
-    "itching": "Dermatologist",
-    "dizziness": "Neurologist / General Physician",
-    "palpitations": "Cardiologist / Neurologist",
-    "fatigue": "General Physician",
-    "back pain": "Orthopedic Surgeon / Physiotherapist",
-    "joint pain": "Orthopedic Surgeon / Rheumatologist",
-    "muscle pain": "Physiotherapist / Orthopedic Surgeon",
-    "shortness of breath": "Pulmonologist / Cardiologist",
-    "chest pain": "Cardiologist / General Physician",
-    "anxiety": "Psychiatrist / Neurologist",
-    "stress": "Psychiatrist / Neurologist"
+    "headache": ["Neurology", "General Medicine"],
+    "fever": ["General Medicine"],
+    "cough": ["General Medicine"],
+    "cold": ["General Medicine"],
+    "sore throat": ["General Medicine"],
+    "stomach pain": ["General Medicine"],
+    "gastritis": ["General Medicine"],
+    "nausea": ["General Medicine"],
+    "rash": ["Dermatology"],
+    "itching": ["Dermatology"],
+    "dizziness": ["Neurology", "General Medicine"],
+    "palpitations": ["Cardiology"],
+    "chest pain": ["Cardiology", "General Medicine"],
+    "anxiety": ["Psychiatry"],
+    "stress": ["Psychiatry"],
+    "joint pain": ["Orthopedics"],
+    "back pain": ["Orthopedics"],
+    "tooth": ["Dentistry"],
+    "gum": ["Dentistry"]
   };
 
   for (let sym of userSymptoms) {
     for (let key in symptomMap) {
       if (sym.includes(key)) {
-        symptomMap[key].split("/").forEach(doc => doctors.add(doc.trim()));
+        symptomMap[key].forEach(spec => specializations.add(spec));
       }
     }
   }
 
-  if (doctors.size === 0) return "General Physician";
-  return Array.from(doctors).join(" / ");
+  if (specializations.size === 0) return ["General Medicine"];
+  return Array.from(specializations);
 };
 
 // CSV file path
 const filePath = path.join(__dirname, "..", "data", "Diseases_Symptoms.csv");
 
 // POST route
-router.post("/check", (req, res) => {
+router.post("/check", async (req, res) => {
   const { input } = req.body;
   if (!input) return res.status(400).json({ message: "No symptoms provided" });
 
@@ -90,7 +90,7 @@ router.post("/check", (req, res) => {
           .map(s => s.toLowerCase().trim())
           .filter(Boolean);
 
-        const matchedSymptoms = userSymptoms.filter(sym => 
+        const matchedSymptoms = userSymptoms.filter(sym =>
           csvSymptoms.some(csvSym => csvSym.includes(sym))
         );
 
@@ -105,14 +105,28 @@ router.post("/check", (req, res) => {
         console.error("CSV row parsing error:", err);
       }
     })
-    .on("end", () => {
-      const doctor = getSuggestedDoctor(bestMatch, userSymptoms);
-      res.json({
-        disease: bestMatch || "Unknown",
-        treatment: treatment || "Not Available",
-        doctor,
-        matchScore: highestScore
-      });
+    .on("end", async () => {
+      const suggestedSpecs = getSuggestedSpecializations(bestMatch, userSymptoms);
+      
+      try {
+        // Fetch real doctors from the database
+        const recommendedDoctors = await User.find({
+          role: 'doctor',
+          specialization: { $in: suggestedSpecs },
+          isActive: true
+        }).select('name specialization rating experience profilePicture phone email');
+
+        res.json({
+          disease: bestMatch || "Unknown",
+          treatment: treatment || "Not Available",
+          specializations: suggestedSpecs,
+          recommendedDoctors,
+          matchScore: highestScore
+        });
+      } catch (dbErr) {
+        console.error("Database error fetching doctors:", dbErr);
+        res.status(500).json({ message: "Error fetching recommended doctors" });
+      }
     })
     .on("error", (err) => {
       console.error("CSV read error:", err);

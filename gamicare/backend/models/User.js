@@ -43,14 +43,53 @@ const userSchema = new mongoose.Schema({
         startTime: String,
         endTime: String
     }],
+    consultationFee: {
+        type: Number,
+        default: 500,
+        required: function() {
+            return this.role === 'doctor';
+        }
+    },
     phone: {
         type: String,
         match: [/^[0-9]{10,15}$/, 'Please enter a valid phone number']
     },
     address: String,
+    profilePicture: {
+        type: String,
+        default: ''
+    },
+    medicalInfo: {
+        bloodType: {
+            type: String,
+            default: 'Not provided'
+        },
+        allergies: {
+            type: String,
+            default: 'None known'
+        },
+        chronicConditions: {
+            type: String,
+            default: 'None'
+        },
+        currentMedications: {
+            type: String,
+            default: 'None'
+        }
+    },
+    totalAppointments: {
+        type: Number,
+        default: 0
+    },
     isActive: {
         type: Boolean,
         default: true
+    },
+    roomNumber: {
+        type: Number,
+        required: function() {
+            return this.role === 'doctor';
+        }
     },
     createdAt: {
         type: Date,

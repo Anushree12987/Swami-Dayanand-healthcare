@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { 
   Bell, BellOff, CheckCircle, XCircle, Calendar, Clock, 
   User, MessageSquare, Trash2, CheckCheck, Filter, 
@@ -12,6 +13,7 @@ import ErrorMessage from '../components/common/ErrorMessage'
 import { toast } from 'react-toastify'
 
 const Notifications = () => {
+  const navigate = useNavigate()
   const [notifications, setNotifications] = useState([])
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
@@ -179,12 +181,13 @@ const Notifications = () => {
     }
 
     if (notification.type === 'appointment' && notification.data?.appointmentId) {
-      window.location.href = `/appointments?id=${notification.data.appointmentId}`
+      navigate(`/appointments?id=${notification.data.appointmentId}`)
+      return
     }
     
     switch (notification.type) {
       case 'reminder':
-        window.location.href = '/schedule'
+        navigate('/schedule')
         break
       case 'system':
         break
@@ -244,7 +247,7 @@ const Notifications = () => {
           <button
             onClick={(e) => {
               e.stopPropagation()
-              window.location.href = `/appointments?action=approve&id=${notification.data?.appointmentId}`
+              navigate(`/appointments?action=approve&id=${notification.data?.appointmentId}`)
             }}
             className="px-3 py-1 bg-gradient-to-r from-[#16C79A]/20 to-[#11698E]/20 text-[#16C79A] rounded-lg text-sm hover:from-[#16C79A]/30 hover:to-[#11698E]/30 transition-all duration-300"
           >
@@ -253,7 +256,7 @@ const Notifications = () => {
           <button
             onClick={(e) => {
               e.stopPropagation()
-              window.location.href = `/appointments?id=${notification.data?.appointmentId}`
+              navigate(`/appointments?id=${notification.data?.appointmentId}`)
             }}
             className="px-3 py-1 border border-[#16C79A] text-[#16C79A] rounded-lg text-sm hover:bg-gradient-to-r from-[#16C79A]/10 to-[#11698E]/10 transition-all duration-300"
           >

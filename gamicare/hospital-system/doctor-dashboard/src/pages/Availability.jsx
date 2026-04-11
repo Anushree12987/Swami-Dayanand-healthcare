@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Calendar, Clock, Plus, Trash2, Save, Clock as ClockIcon, X, CalendarDays, Settings } from 'lucide-react'
-import { format, addDays, startOfWeek, eachDayOfInterval } from 'date-fns'
+import { format, addDays, startOfWeek, eachDayOfInterval, isSameDay, parseISO } from 'date-fns'
+import { doctorService } from '../services/doctorService'
 import { toast } from 'react-toastify'
 
 const Availability = () => {
@@ -99,19 +100,46 @@ const Availability = () => {
   const handleSave = async () => {
     setIsLoading(true)
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      // Generate slots for the next 14 days based on recurring availability
+      const allSlots = []
+      const next14Days = getNextTwoWeeks()
       
-      const dataToSave = {
-        recurring: availability,
-        customDates: customDates.map(date => ({
-          date: date.date,
-          slots: date.isDayOff ? [] : date.slots,
-          isDayOff: date.isDayOff
-        }))
+      next14Days.forEach(date => {
+        const dayName = format(date, 'EEEE')
+        const dayRules = availability[dayName]
+        
+        // Check if there's a custom exception for this date
+        const customDate = customDates.find(cd => cd.date === format(date, 'yyyy-MM-dd'))
+        
+        if (customDate) {
+          if (!customDate.isDayOff) {
+            customDate.slots.forEach(slot => {
+              allSlots.push({
+                date: date,
+                startTime: slot.start,
+                endTime: slot.end
+              })
+            })
+          }
+        } else if (dayRules && dayRules.length > 0) {
+          dayRules.forEach(slot => {
+            allSlots.push({
+              date: date,
+              startTime: slot.start,
+              endTime: slot.end
+            })
+          })
+        }
+      })
+
+      if (allSlots.length === 0) {
+        toast.warning('Please add at least one available slot')
+        setIsLoading(false)
+        return
       }
 
-      console.log('Saving availability:', dataToSave)
-      toast.success('Availability saved successfully!')
+      await doctorService.saveAvailabilitySlots(allSlots)
+      toast.success('Availability saved and slots generated for the next 14 days!')
       
     } catch (error) {
       toast.error('Failed to save availability')

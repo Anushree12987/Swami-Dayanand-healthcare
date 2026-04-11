@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   FaCalendarAlt, 
   FaClock, 
@@ -16,13 +16,16 @@ import {
   FaChevronRight,
   FaDownload,
   FaEye,
-  FaTimesCircle
+  FaTimesCircle,
+  FaVideo,
+  FaMapMarkerAlt
 } from 'react-icons/fa';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 
 const PatientDashboard = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [notifications, setNotifications] = useState([]);
@@ -45,17 +48,19 @@ const PatientDashboard = () => {
         headers: { Authorization: `Bearer ${token}` }
       };
 
-      const appointmentsRes = await axios.get('http://localhost:5000/api/appointments/patient', config);
-      setAppointments(appointmentsRes.data);
+      const appointmentsRes = await axios.get('http://localhost:5001/api/appointments/patient', config);
+      const appData = appointmentsRes.data.data || appointmentsRes.data || [];
+      
+      setAppointments(appData);
 
-      const total = appointmentsRes.data.length;
-      const upcoming = appointmentsRes.data.filter(a => 
+      const total = appData.length;
+      const upcoming = appData.filter(a => 
         new Date(a.date) > new Date() && a.status === 'approved'
       ).length;
-      const completed = appointmentsRes.data.filter(a => 
+      const completed = appData.filter(a => 
         a.status === 'completed'
       ).length;
-      const pending = appointmentsRes.data.filter(a => 
+      const pending = appData.filter(a => 
         a.status === 'pending'
       ).length;
 
@@ -95,6 +100,7 @@ const PatientDashboard = () => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString || isNaN(new Date(dateString).getTime())) return 'Invalid Date';
     const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString('en-IN', options);
   };
@@ -232,19 +238,33 @@ const PatientDashboard = () => {
                                 <FaClock size={12} />
                                 {appointment.time}
                               </span>
+                              <span className="inline-flex items-center gap-1 bg-gradient-to-r from-[#0d2c4a] to-[#19456B] px-2 py-1 rounded border border-[#16C79A]/20">
+                                <FaMapMarkerAlt size={12} />
+                                Room {appointment.doctorId?.roomNumber || 'N/A'}
+                              </span>
                             </div>
                             <div className="mt-2">
                               {getStatusBadge(appointment.status)}
                             </div>
                           </div>
                         </div>
-                        <Link 
-                          to={`/patient/appointments`}
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#16C79A] to-[#11698E] text-white text-sm font-medium rounded-lg hover:shadow-md border border-transparent hover:border-white/20"
-                        >
-                          View
-                          <FaChevronRight size={10} />
-                        </Link>
+                        <div className="flex flex-col gap-2">
+                          <Link 
+                            to={`/patient/appointments`}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-[#16C79A]/10 to-[#11698E]/10 text-white text-sm font-medium rounded-lg hover:shadow-md border border-[#16C79A]/30 hover:border-[#16C79A]"
+                          >
+                            View Details
+                          </Link>
+                          {appointment.type === 'Virtual' && appointment.roomID && (
+                            <Link 
+                              to={`/patient/consultation/${appointment.roomID}`}
+                              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-bold rounded-lg hover:shadow-lg animate-pulse"
+                            >
+                              <FaVideo size={14} />
+                              Join Video Call
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     ))}
                 </div>
@@ -300,6 +320,33 @@ const PatientDashboard = () => {
                   </div>
                   <FaChevronRight className="text-[#16C79A]" />
                 </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Medical Records Summary */}
+          <div className="bg-gradient-to-br from-[#19456B] to-[#0d2c4a] rounded-2xl shadow-xl border border-emerald-500/20 overflow-hidden">
+            <div className="p-6 border-b border-emerald-500/20 bg-gradient-to-r from-emerald-900/20 to-transparent">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-gradient-to-br from-emerald-500/20 to-emerald-500/10 rounded-xl border border-emerald-500/20">
+                  <FaFileMedical className="text-xl text-emerald-400" />
+                </div>
+                <h2 className="text-xl font-bold text-white">Medical Records</h2>
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-3 bg-[#0d2c4a]/50 rounded-lg border border-emerald-500/10">
+                  <span className="text-white/70">Total Appointments</span>
+                  <span className="text-2xl font-bold text-white">{stats.totalAppointments}</span>
+                </div>
+                <button
+                  onClick={() => navigate('/patient/appointments')}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 text-emerald-400 font-bold rounded-xl hover:bg-gradient-to-r hover:from-emerald-500/20 hover:to-emerald-600/20 transition-all duration-300 border border-emerald-500/20 hover:border-emerald-500/40"
+                >
+                  <FaHistory />
+                  View Medical History
+                </button>
               </div>
             </div>
           </div>

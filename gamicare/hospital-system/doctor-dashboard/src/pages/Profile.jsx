@@ -259,7 +259,7 @@ const Profile = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-[#16C79A]/80">Consultation Fee</p>
-                    <p className="text-xl font-bold text-white">${formData.consultationFee || '0'}</p>
+                    <p className="text-xl font-bold text-white">₹{formData.consultationFee || '0'}</p>
                   </div>
                   <DollarSign className="h-8 w-8 text-[#16C79A]" />
                 </div>
@@ -392,7 +392,7 @@ const Profile = () => {
                 
                 <ProfileField
                   icon={<DollarSign />}
-                  label="Consultation Fee ($)"
+                  label="Consultation Fee (₹)"
                   value={formData.consultationFee}
                   fieldName="consultationFee"
                   type="number"
@@ -403,6 +403,14 @@ const Profile = () => {
                   label="Hospital/Clinic"
                   value={formData.hospital}
                   fieldName="hospital"
+                />
+                
+                <ProfileField
+                  icon={<MapPin />}
+                  label="Assigned Room Number"
+                  value={user?.roomNumber}
+                  fieldName="roomNumber"
+                  editable={false}
                 />
               </div>
             </div>

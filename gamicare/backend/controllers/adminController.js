@@ -13,6 +13,14 @@ const createDoctor = async (req, res) => {
             return res.status(400).json({ message: 'User already exists' });
         }
         
+        // Find max room number among all doctors
+        const lastDoctor = await User.findOne({ role: 'doctor' })
+            .sort({ roomNumber: -1 });
+            
+        const nextRoomNumber = lastDoctor && lastDoctor.roomNumber 
+            ? lastDoctor.roomNumber + 1 
+            : 101;
+            
         // Create doctor
         const doctor = new User({
             name,
@@ -21,7 +29,8 @@ const createDoctor = async (req, res) => {
             specialization,
             availableTime,
             phone,
-            role: 'doctor'
+            role: 'doctor',
+            roomNumber: nextRoomNumber
         });
         
         await doctor.save();
@@ -32,7 +41,8 @@ const createDoctor = async (req, res) => {
                 id: doctor._id,
                 name: doctor.name,
                 email: doctor.email,
-                specialization: doctor.specialization
+                specialization: doctor.specialization,
+                roomNumber: doctor.roomNumber
             }
         });
     } catch (error) {
@@ -76,7 +86,7 @@ const getAllAppointments = async (req, res) => {
         
         const appointments = await Appointment.find(query)
             .populate('patientId', 'name email phone')
-            .populate('doctorId', 'name specialization')
+            .populate('doctorId', 'name specialization roomNumber')
             .sort({ date: -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit);

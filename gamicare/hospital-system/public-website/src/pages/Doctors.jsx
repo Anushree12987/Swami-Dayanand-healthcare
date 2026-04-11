@@ -7,6 +7,8 @@ import {
   TrendingUp, Zap, Users as UsersIcon, Sparkles
 } from 'lucide-react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-hot-toast';
 
 const Doctors = () => {
@@ -15,6 +17,21 @@ const Doctors = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSpecialization, setSelectedSpecialization] = useState('all');
   const [favorites, setFavorites] = useState(new Set());
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const handleBooking = (type) => {
+    if (!user) {
+      toast.error('Please login to book an appointment');
+      navigate('/login');
+      return;
+    }
+    if (user.role !== 'patient') {
+      toast.error('Only patients can book appointments');
+      return;
+    }
+    navigate('/patient/book-appointment');
+  };
 
   useEffect(() => {
     fetchDoctors();
@@ -23,10 +40,12 @@ const Doctors = () => {
   const fetchDoctors = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/doctors');
+      const response = await axios.get('http://localhost:5001/api/doctors');
       
-      if (Array.isArray(response.data)) {
-        setDoctors(response.data.map(doctor => ({
+      const doctorData = response.data.data || response.data;
+      
+      if (Array.isArray(doctorData)) {
+        setDoctors(doctorData.map(doctor => ({
           ...doctor,
           rating: Math.random() * 0.5 + 4.5,
           patients: Math.floor(Math.random() * 1000) + 500,
@@ -168,12 +187,18 @@ const Doctors = () => {
 
               {/* CTA Buttons */}
               <div className="flex flex-wrap gap-4">
-                <button className="px-6 py-3 bg-white text-blue-600 rounded-xl hover:bg-blue-50 transition-all duration-300 font-medium flex items-center gap-2 shadow-lg">
+                <button 
+                  onClick={() => handleBooking('In-person')}
+                  className="px-6 py-3 bg-white text-blue-600 rounded-xl hover:bg-blue-50 transition-all duration-300 font-medium flex items-center gap-2 shadow-lg"
+                >
                   <Calendar className="h-5 w-5" />
                   Book Appointment
                 </button>
                 
-                <button className="px-6 py-3 bg-transparent border-2 border-white text-white rounded-xl hover:bg-white/10 transition-all duration-300 font-medium flex items-center gap-2">
+                <button 
+                  onClick={() => handleBooking('Virtual')}
+                  className="px-6 py-3 bg-transparent border-2 border-white text-white rounded-xl hover:bg-white/10 transition-all duration-300 font-medium flex items-center gap-2"
+                >
                   <Video className="h-5 w-5" />
                   Virtual Consultation
                 </button>
@@ -381,15 +406,23 @@ const Doctors = () => {
                         </div>
                       </div>
 
-                      {/* Action Button */}
-                      <a
-                        href="/register"
-                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 font-medium shadow-md hover:shadow-lg group-hover:scale-[1.02]"
-                      >
-                        <Calendar className="h-4 w-4" />
-                        Book Appointment
-                        <ChevronRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
-                      </a>
+                      {/* Action Buttons */}
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => handleBooking('In-person')}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 font-medium shadow-sm hover:shadow-md"
+                        >
+                          <Calendar className="h-4 w-4" />
+                          Book In-Person
+                        </button>
+                        <button
+                          onClick={() => handleBooking('Virtual')}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border-2 border-blue-600 text-blue-600 rounded-xl hover:bg-blue-50 transition-all duration-300 font-medium shadow-sm hover:shadow-md"
+                        >
+                          <Video className="h-4 w-4" />
+                          Virtual Consultation
+                        </button>
+                      </div>
                     </div>
                     
                     {/* Verified Badge */}

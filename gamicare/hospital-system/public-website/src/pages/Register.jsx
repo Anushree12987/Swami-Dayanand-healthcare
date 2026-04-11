@@ -33,7 +33,7 @@ const Register = () => {
 
   try {
     // 🔥 Professional API setup for Vite
-    const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+    const API = import.meta.env.VITE_API_URL || "http://localhost:5001";
 
     const response = await axios.post(`${API}/api/auth/register`, {
       name: formData.name,
