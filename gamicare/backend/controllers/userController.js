@@ -71,7 +71,10 @@ exports.updateProfile = async (req, res) => {
                 medicalInfo: user.medicalInfo,
                 profilePicture: user.profilePicture,
                 roomNumber: user.roomNumber,
-                totalAppointments: appointmentCount
+                totalAppointments: appointmentCount,
+                isActive: user.isActive,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt
             }
         });
     } catch (error) {
