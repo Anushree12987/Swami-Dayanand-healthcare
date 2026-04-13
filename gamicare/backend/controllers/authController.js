@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const sendEmail = require('../utils/sendEmail');
 
 // Add JWT verification middleware
 const authMiddleware = async (req, res, next) => {
@@ -76,14 +77,16 @@ const register = async (req, res) => {
         }
 
         // Password hashing is handled automatically by the User model's pre-save middleware
-        const user = new User({
+        const userData = {
             name,
             email,
-            password: password, // Pass raw password; mongoose will hash it via pre('save')
-            phone: phone || 'Not provided',
-            address: address || 'Not provided',
+            password,
             role: 'patient'
-        });
+        };
+        if (phone) userData.phone = phone;
+        if (address) userData.address = address;
+
+        const user = new User(userData);
 
         await user.save();
 
@@ -100,7 +103,11 @@ const register = async (req, res) => {
                 id: user._id,
                 name: user.name,
                 email: user.email,
-                role: user.role
+                role: user.role,
+                isActive: user.isActive,
+                profilePicture: user.profilePicture,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt
             }
         });
 
@@ -146,7 +153,11 @@ const login = async (req, res) => {
                 email: user.email,
                 role: user.role,
                 specialization: user.specialization,
-                roomNumber: user.roomNumber
+                roomNumber: user.roomNumber,
+                profilePicture: user.profilePicture,
+                isActive: user.isActive,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt
             }
         });
     } catch (error) {
@@ -188,7 +199,11 @@ const adminLogin = async (req, res) => {
                 id: user._id,
                 name: user.name,
                 email: user.email,
-                role: user.role
+                role: user.role,
+                profilePicture: user.profilePicture,
+                isActive: user.isActive,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt
             }
         });
     } catch (error) {
@@ -232,9 +247,82 @@ const doctorLogin = async (req, res) => {
                 email: user.email,
                 role: user.role,
                 specialization: user.specialization,
-                roomNumber: user.roomNumber
+                roomNumber: user.roomNumber,
+                profilePicture: user.profilePicture,
+                isActive: user.isActive,
+                createdAt: user.createdAt,
+                updatedAt: user.updatedAt
             }
         });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// Forgot Password -> Generate OTP and send email
+const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found with this email' });
+        }
+        
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        user.resetPasswordOTP = otp;
+        user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 mins
+        await user.save({ validateBeforeSave: false }); // Avoid triggering validation on other fields
+        
+        const message = `You are receiving this email because you requested a password reset.\n\nYour 6-digit Password Reset OTP is: ${otp}\n\nThis OTP is valid for 15 minutes.`;
+        
+        try {
+            await sendEmail({
+                email: user.email,
+                subject: 'Password Reset OTP - Swami Dayanand Healthcare',
+                message
+            });
+            res.json({ message: 'OTP sent to email', email: user.email });
+        } catch (error) {
+            user.resetPasswordOTP = undefined;
+            user.resetPasswordExpires = undefined;
+            await user.save({ validateBeforeSave: false });
+            console.error('Send email error:', error);
+            return res.status(500).json({ message: 'Could not send email because email credentials are not configured or are invalid. Check .env' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
+// Reset Password with OTP
+const resetPassword = async (req, res) => {
+    try {
+        const { email, otp, password } = req.body;
+        
+        if (!password || password.length < 6) {
+             return res.status(400).json({ message: 'Password must be at least 6 characters' });
+        }
+
+        const user = await User.findOne({ 
+            email,
+            resetPasswordOTP: otp,
+            resetPasswordExpires: { $gt: Date.now() }
+        }).select('+password');
+        
+        if (!user) {
+            return res.status(400).json({ message: 'Invalid or expired OTP' });
+        }
+        
+        user.password = password;
+        user.resetPasswordOTP = undefined;
+        user.resetPasswordExpires = undefined;
+        
+        await user.save();
+        
+        res.json({ message: 'Password reset successful. You can now login.' });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
@@ -247,5 +335,7 @@ module.exports = {
     doctorLogin, 
     authMiddleware, 
     requireRole, 
-    getCurrentUser 
+    getCurrentUser,
+    forgotPassword,
+    resetPassword
 };
