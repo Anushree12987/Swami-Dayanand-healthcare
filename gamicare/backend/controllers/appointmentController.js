@@ -30,16 +30,35 @@ const createAppointment = async (req, res) => {
             return res.status(404).json({ message: 'Doctor not found' });
         }
         
-        // Check if slot is already booked
-        const existingAppointment = await Appointment.findOne({
+        // Check capacities
+        const MAX_IN_PERSON = 3;
+        const MAX_VIRTUAL = 1;
+
+        const currentAppointments = await Appointment.find({
             doctorId,
             date: appointmentDate,
             time,
             status: { $in: ['pending', 'approved'] }
         });
-        
-        if (existingAppointment) {
-            return res.status(400).json({ message: 'This time slot is already booked' });
+
+        const virtualCount = currentAppointments.filter(a => a.type === 'Virtual').length;
+        const inPersonCount = currentAppointments.filter(a => a.type === 'In-person').length;
+
+        // Rule 1: If it's a Virtual booking, ensure no appointments exist in this slot
+        if (type === 'Virtual') {
+            if (currentAppointments.length > 0) {
+                return res.status(400).json({ message: 'This time slot is occupied. Virtual consultations require a private session.' });
+            }
+        }
+
+        // Rule 2: If it's an In-person booking, ensure no Virtual exists and In-person < 3
+        if (type === 'In-person' || !type) {
+            if (virtualCount > 0) {
+                return res.status(400).json({ message: 'This time slot is booked for a virtual consultation.' });
+            }
+            if (inPersonCount >= MAX_IN_PERSON) {
+                return res.status(400).json({ message: `This time slot has reached its maximum in-person capacity (${MAX_IN_PERSON} patients).` });
+            }
         }
         
         // Create appointment
@@ -56,6 +75,32 @@ const createAppointment = async (req, res) => {
         });
         
         await appointment.save();
+        
+        // Mark the slot as booked ONLY IF capacity is reached
+        const updatedAppointments = await Appointment.find({
+            doctorId,
+            date: appointmentDate,
+            time,
+            status: { $in: ['pending', 'approved'] }
+        });
+
+        const isFull = (type === 'Virtual') || (updatedAppointments.length >= MAX_IN_PERSON);
+
+        if (isFull) {
+            await User.updateOne(
+                { 
+                    _id: doctorId,
+                    'availabilitySlots.date': appointmentDate,
+                    'availabilitySlots.startTime': time
+                },
+                {
+                    $set: { 
+                        'availabilitySlots.$.isBooked': true,
+                        'availabilitySlots.$.appointmentId': appointment._id
+                    }
+                }
+            );
+        }
         
         // Create notifications
         await Notification.create([
@@ -120,7 +165,7 @@ const updateAppointmentStatus = async (req, res) => {
         const { id } = req.params;
         const { status } = req.body;
         
-        const appointment = await Appointment.findById(id);
+        const appointment = await Appointment.findById(id).populate('patientId', 'name');
         if (!appointment) {
             return res.status(404).json({ message: 'Appointment not found' });
         }
@@ -130,17 +175,61 @@ const updateAppointmentStatus = async (req, res) => {
             return res.status(403).json({ message: 'Not authorized' });
         }
         
+        // Check if patient owns this appointment and is only cancelling
+        if (req.user.role === 'patient') {
+            const patientId = appointment.patientId._id || appointment.patientId;
+            if (patientId.toString() !== req.user.userId) {
+                return res.status(403).json({ message: 'Not authorized to modify this appointment' });
+            }
+            if (status !== 'cancelled') {
+                return res.status(400).json({ message: 'Patients can only cancel appointments' });
+            }
+        }
+        
+        const oldStatus = appointment.status;
         appointment.status = status;
         await appointment.save();
+
+        // Release the slot if appointment is cancelled
+        if (status === 'cancelled') {
+            try {
+                await User.updateOne(
+                    { 
+                        _id: appointment.doctorId,
+                        'availabilitySlots.appointmentId': appointment._id
+                    },
+                    {
+                        $set: { 'availabilitySlots.$.isBooked': false }
+                    }
+                );
+
+                // Create notification for doctor if patient cancelled
+                if (req.user.role === 'patient') {
+                    const dateStr = appointment.date instanceof Date ? appointment.date.toLocaleDateString() : 'scheduled date';
+                    await Notification.create({
+                        userId: appointment.doctorId,
+                        title: 'Appointment Cancelled',
+                        message: `Patient ${appointment.patientId?.name || 'A patient'} has cancelled their appointment on ${dateStr} at ${appointment.time}`,
+                        type: 'appointment',
+                        relatedId: appointment._id
+                    });
+                }
+            } catch (notifyError) {
+                console.error('Notification/Slot update error:', notifyError);
+                // We don't fail the request if notification fails, the appointment is already saved as cancelled
+            }
+        }
         
-        // Create notification for patient
-        await Notification.create({
-            userId: appointment.patientId,
-            title: `Appointment ${status}`,
-            message: `Your appointment has been ${status}`,
-            type: 'appointment',
-            relatedId: appointment._id
-        });
+        // Create notification for patient (if doctor/admin changed status)
+        if (req.user.role !== 'patient') {
+            await Notification.create({
+                userId: appointment.patientId,
+                title: `Appointment ${status}`,
+                message: `Your appointment has been ${status}`,
+                type: 'appointment',
+                relatedId: appointment._id
+            });
+        }
         
         res.json({
             message: `Appointment ${status} successfully`,
