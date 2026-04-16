@@ -239,7 +239,8 @@ exports.updateAppointmentStatus = async (req, res) => {
             await User.updateOne(
                 { 
                     _id: appointment.doctorId,
-                    'availabilitySlots.appointmentId': appointmentId
+                    'availabilitySlots.date': appointment.date,
+                    'availabilitySlots.startTime': appointment.time
                 },
                 {
                     $set: { 'availabilitySlots.$.isBooked': false }
@@ -274,7 +275,7 @@ exports.updateAppointmentStatus = async (req, res) => {
 // Add availability slots
 exports.addAvailabilitySlots = async (req, res) => {
     try {
-        const { slots } = req.body; // Array of { date, startTime, endTime }
+        const { slots } = req.body; // Array of { date: '2026-04-05', startTime: '09:00', endTime: '17:00' }
         
         if (!slots || !Array.isArray(slots)) {
             return res.status(400).json({
@@ -284,8 +285,19 @@ exports.addAvailabilitySlots = async (req, res) => {
         }
         
         const doctor = await User.findById(req.user.id);
+        if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+        // Get unique dates from the new slots to clear previous entries for those dates only
+        const datesToClear = [...new Set(slots.map(s => new Date(s.date).toDateString()))];
+
+        // Filter out existing unbooked slots for these dates
+        doctor.availabilitySlots = doctor.availabilitySlots.filter(s => {
+            // Keep the slot if it's booked OR if its date isn't in the new update set
+            const slotDate = new Date(s.date).toDateString();
+            return s.isBooked || !datesToClear.includes(slotDate);
+        });
         
-        // Add each slot
+        // Add each new slot
         for (const slot of slots) {
             doctor.availabilitySlots.push({
                 date: new Date(slot.date),
@@ -299,7 +311,7 @@ exports.addAvailabilitySlots = async (req, res) => {
         
         res.status(200).json({
             success: true,
-            message: 'Availability slots added successfully',
+            message: 'Availability slots updated successfully',
             addedSlots: slots.length
         });
     } catch (error) {
@@ -331,6 +343,161 @@ exports.getAvailabilitySlots = async (req, res) => {
             success: true,
             count: availabilitySlots.length,
             data: availabilitySlots
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'Server error',
+            error: error.message
+        });
+    }
+};
+// NEW: Get availability slots for a specific doctor (Public/Patient)
+exports.getPublicAvailability = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { date } = req.query;
+        
+        const doctor = await User.findOne({ _id: id, role: 'doctor' });
+        if (!doctor) return res.status(404).json({ success: false, message: 'Doctor not found' });
+
+        // Helper to convert "HH:mm" (24hr) to minutes
+        const timeToMinutes = (time) => {
+            if (!time) return 0;
+            const [h, m] = time.split(':').map(Number);
+            return h * 60 + m;
+        };
+
+        // Helper to format minutes to "hh:mm A" (12hr)
+        const formatTime = (minutes) => {
+            let h = Math.floor(minutes / 60);
+            const m = minutes % 60;
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12;
+            h = h ? h : 12;
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${ampm}`;
+        };
+
+        let availableBlocks = [];
+        let filterDateObj = null;
+
+        if (date) {
+            filterDateObj = new Date(date);
+            // "date" comes in exactly as YYYY-MM-DD from frontend 
+            const filterDateStrShort = date.split('T')[0];
+            
+            // Check if there are specific slots customized for this date
+            const customSlots = (doctor.availabilitySlots || []).filter(slot => {
+                if (!slot.date) return false;
+                const slotDateStrStr = new Date(slot.date).toISOString().split('T')[0];
+                return slotDateStrStr === filterDateStrShort;
+            });
+
+            if (customSlots.length > 0) {
+                // Doctor saved something in Availability.jsx
+                availableBlocks = customSlots.map(slot => ({
+                    start: slot.startTime,
+                    end: slot.endTime
+                }));
+            } else {
+                // Determine day of the week robustly
+                const dayName = filterDateObj.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
+                
+                // Fetch default available time for that day
+                const defaultTime = (doctor.availableTime || []).filter(block => 
+                    block.day && block.day.toLowerCase() === dayName.toLowerCase()
+                );
+                
+                if (defaultTime.length > 0) {
+                    availableBlocks = defaultTime.map(block => ({
+                        start: block.startTime,
+                        end: block.endTime
+                    }));
+                } else {
+                    // Fallback so every doctor has slots for any day requested
+                    availableBlocks = [{ start: '09:00', end: '17:00' }];
+                }
+            }
+        }
+
+        const generatedSlots = [];
+        
+        // Generate 30-minute intervals for all valid blocks
+        for (const block of availableBlocks) {
+            if (block.start && (block.start.includes('AM') || block.start.includes('PM'))) {
+                // It's already formatted as a specific time slot (from seed script or UI)
+                generatedSlots.push(block.start);
+            } else {
+                // It's a 24-hr layout string (e.g., '09:00' to '17:00')
+                let currentMinutes = timeToMinutes(block.start);
+                const endMinutes = timeToMinutes(block.end);
+                
+                while (currentMinutes + 30 <= endMinutes && !isNaN(currentMinutes)) {
+                    generatedSlots.push(formatTime(currentMinutes));
+                    currentMinutes += 30;
+                }
+            }
+        }
+
+        let available30MinSlots = [];
+
+        if (date && filterDateObj && generatedSlots.length > 0) {
+            const todayStart = new Date(filterDateObj);
+            todayStart.setUTCHours(0, 0, 0, 0);
+            const todayEnd = new Date(todayStart);
+            todayEnd.setUTCDate(todayEnd.getUTCDate() + 1);
+
+            // Find existing appointments for this date
+            const appointments = await Appointment.find({
+                doctorId: id,
+                date: {
+                    $gte: todayStart,
+                    $lt: todayEnd
+                },
+                status: { $in: ['pending', 'approved'] }
+            });
+            
+            const MAX_IN_PERSON = 3;
+            const MAX_VIRTUAL = 1;
+
+            const now = new Date();
+            // Create a specific string for today in YYYY-MM-DD to compare with 'date'
+            const todayStr = now.toISOString().split('T')[0];
+            const isToday = (date === todayStr);
+
+            for (const timeStr of generatedSlots) {
+                // If it's today, skip slots that have already passed
+                if (isToday) {
+                    // timeStr is expected like "09:00 AM"
+                    const [timePart, ampm] = timeStr.split(' ');
+                    const [hPart, mPart] = timePart.split(':').map(Number);
+                    
+                    let actualH = hPart;
+                    if (ampm === 'PM' && actualH !== 12) actualH += 12;
+                    if (ampm === 'AM' && actualH === 12) actualH = 0;
+                    
+                    // Create a Date object for this specific slot today in local time
+                    const slotTime = new Date();
+                    slotTime.setHours(actualH, mPart, 0, 0);
+                    
+                    // Skip if the slot is in the past (e.g. 10 AM when it's already 3 PM)
+                    if (slotTime < now) continue;
+                }
+
+                const slotAppointments = appointments.filter(a => a.time === timeStr);
+                
+                const virtualCount = slotAppointments.filter(a => a.type === 'Virtual').length;
+                const inPersonCount = slotAppointments.filter(a => a.type === 'In-person' || !a.type).length;
+                
+                if (virtualCount < MAX_VIRTUAL && inPersonCount < MAX_IN_PERSON) {
+                    available30MinSlots.push({ startTime: timeStr });
+                }
+            }
+        }
+
+        res.status(200).json({
+            success: true,
+            data: available30MinSlots
         });
     } catch (error) {
         res.status(500).json({
