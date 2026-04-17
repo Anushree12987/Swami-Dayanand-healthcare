@@ -1,26 +1,30 @@
 const cron = require('node-cron');
-const { sendAppointmentReminders } = require('../utils/reminderService');
+const { sendAppointmentReminders, sendShortTermReminders } = require('../utils/reminderService');
 
 /**
  * Reminder Cron Job
- * Runs every hour at minute 0 (e.g., 9:00, 10:00, 11:00...)
- * Schedule format: 'minute hour day month weekday'
- *
- * Finds appointments in the 23–25 hour window from now
- * and sends in-app + email reminders to both patient and doctor.
+ * Runs every 15 minutes
+ * Finds appointments in the 23–25 hour window AND the 1–3 hour window
  */
 const startReminderJob = () => {
-    // Runs every hour
-    cron.schedule('0 * * * *', async () => {
+    // Runs every 15 minutes
+    cron.schedule('*/15 * * * *', async () => {
         await sendAppointmentReminders();
+        await sendShortTermReminders();
     });
 
-    console.log('🕐 [Cron] Appointment reminder job started — runs every hour.');
+    console.log('[Cron] Appointment reminder job started — runs every 15 minutes.');
 
-    // Also run once immediately at server start (catches any missed slots on restart)
-    sendAppointmentReminders().catch(err =>
-        console.error('❌ [Cron] Initial reminder run failed:', err.message)
-    );
+    // Also run once immediately at server start
+    const runInitialReminders = async () => {
+        try {
+            await sendAppointmentReminders();
+            await sendShortTermReminders();
+        } catch (err) {
+            console.error(' [Cron] Initial reminder run failed:', err.message);
+        }
+    };
+    runInitialReminders();
 };
 
 module.exports = { startReminderJob };
