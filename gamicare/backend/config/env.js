@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ silent: true });
 
 const requiredEnvVars = [
     'MONGODB_URI',
