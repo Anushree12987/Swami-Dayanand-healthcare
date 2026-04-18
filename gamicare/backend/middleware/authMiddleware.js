@@ -41,10 +41,10 @@ const protect = async (req, res, next) => {
         next();
     } catch (error) {
         if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({ message: 'Invalid token' });
+            return res.status(401).json({ message: 'Invalid session. Please login again.' });
         }
         if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({ message: 'Token expired' });
+            return res.status(401).json({ message: 'Session expired. Please login again.' });
         }
         res.status(500).json({ message: 'Server error', error: error.message });
     }
