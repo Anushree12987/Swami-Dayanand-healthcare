@@ -130,12 +130,12 @@ const login = async (req, res) => {
         
         const user = await User.findOne({ email }).select('+password');
         if (!user) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(404).json({ message: 'unregistered account  login first' });
         }
         
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(401).json({ message: 'Incorrect password' });
         }
         
         const token = jwt.sign(
@@ -173,7 +173,7 @@ const adminLogin = async (req, res) => {
         const user = await User.findOne({ email }).select('+password');
         
         if (!user) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(404).json({ message: 'un regeisterd account pls login first' });
         }
         
         // Check if user is admin
@@ -183,7 +183,7 @@ const adminLogin = async (req, res) => {
         
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(401).json({ message: 'Incorrect password' });
         }
         
         const token = jwt.sign(
@@ -219,7 +219,7 @@ const doctorLogin = async (req, res) => {
         const user = await User.findOne({ email }).select('+password');
         
         if (!user) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(404).json({ message: 'un regeisterd account pls login first' });
         }
         
         // Check if user is doctor
@@ -229,7 +229,7 @@ const doctorLogin = async (req, res) => {
         
         const isValidPassword = await bcrypt.compare(password, user.password);
         if (!isValidPassword) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+            return res.status(401).json({ message: 'Incorrect password' });
         }
         
         const token = jwt.sign(
@@ -266,7 +266,7 @@ const forgotPassword = async (req, res) => {
         
         const user = await User.findOne({ email });
         if (!user) {
-            return res.status(404).json({ message: 'User not found with this email' });
+            return res.status(404).json({ message: 'Email not found' });
         }
         
         // Generate 6-digit OTP
@@ -308,12 +308,15 @@ const resetPassword = async (req, res) => {
 
         const user = await User.findOne({ 
             email,
-            resetPasswordOTP: otp,
-            resetPasswordExpires: { $gt: Date.now() }
+            resetPasswordOTP: otp
         }).select('+password');
         
         if (!user) {
-            return res.status(400).json({ message: 'Invalid or expired OTP' });
+            return res.status(400).json({ message: 'Invalid OTP' });
+        }
+
+        if (user.resetPasswordExpires < Date.now()) {
+            return res.status(400).json({ message: 'Expired OTP' });
         }
         
         user.password = password;
