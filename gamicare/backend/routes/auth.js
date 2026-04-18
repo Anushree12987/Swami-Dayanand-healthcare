@@ -7,12 +7,16 @@ const {
     doctorLogin, 
     authMiddleware, 
     requireRole, 
-    getCurrentUser 
+    getCurrentUser,
+    forgotPassword,
+    resetPassword
 } = require('../controllers/authController');
 
 // Public routes
 router.post('/register', register); // Only for patients
 router.post('/login', login); // For all roles
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
 
 // Role-specific login routes
 router.post('/admin/login', adminLogin);
