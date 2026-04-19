@@ -173,7 +173,7 @@ const adminLogin = async (req, res) => {
         const user = await User.findOne({ email }).select('+password');
         
         if (!user) {
-            return res.status(404).json({ message: 'un regeisterd account pls login first' });
+            return res.status(404).json({ message: 'This account is not registered. Please log in first.' });
         }
         
         // Check if user is admin
@@ -219,7 +219,7 @@ const doctorLogin = async (req, res) => {
         const user = await User.findOne({ email }).select('+password');
         
         if (!user) {
-            return res.status(404).json({ message: 'un regeisterd account pls login first' });
+            return res.status(404).json({ message: 'This account is not registered. Please log in first.' });
         }
         
         // Check if user is doctor
