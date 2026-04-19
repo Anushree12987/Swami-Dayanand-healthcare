@@ -117,9 +117,45 @@ const updateSystemSettings = async (req, res) => {
     }
 };
 
+// Broadcast message to all users
+const broadcastMessage = async (req, res) => {
+    try {
+        const { title, message } = req.body;
+        
+        if (!title || !message) {
+            return res.status(400).json({ message: 'Title and message are required' });
+        }
+        
+        // Find all non-admin users
+        const users = await User.find({ role: { $ne: 'admin' } }).select('_id');
+        
+        if (users.length === 0) {
+            return res.status(404).json({ message: 'No users found to broadcast to' });
+        }
+        
+        // Create notifications for all users
+        const notifications = users.map(user => ({
+            userId: user._id,
+            title: 'Announcement from Admin',
+            message: `${title}: ${message}`,
+            type: 'system'
+        }));
+        
+        await Notification.insertMany(notifications);
+        
+        res.json({ 
+            message: 'Broadcast message sent successfully', 
+            userCount: users.length 
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+};
+
 module.exports = {
     createDoctor,
     getDashboardStats,
     getAllAppointments,
-    updateSystemSettings
+    updateSystemSettings,
+    broadcastMessage
 };
