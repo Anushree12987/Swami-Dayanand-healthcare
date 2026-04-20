@@ -43,6 +43,19 @@ const userSchema = new mongoose.Schema({
         startTime: String,
         endTime: String
     }],
+    availabilitySlots: [{
+        date: Date,
+        startTime: String,
+        endTime: String,
+        isBooked: {
+            type: Boolean,
+            default: false
+        },
+        appointmentId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Appointment'
+        }
+    }],
     consultationFee: {
         type: Number,
         default: 500,
@@ -99,10 +112,12 @@ const userSchema = new mongoose.Schema({
     updatedAt: {
         type: Date,
         default: Date.now
-    }
+    },
+    resetPasswordOTP: String,
+    resetPasswordExpires: Date
 });
 
-// Pre-save middleware for Mongoose 7+
+
 userSchema.pre('save', async function() {
     // Only hash the password if it's modified (or new)
     if (this.isModified('password')) {
