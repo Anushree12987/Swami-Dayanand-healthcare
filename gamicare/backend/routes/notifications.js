@@ -89,6 +89,22 @@ router.put('/read-all', auth, async (req, res) => {
     }
 });
 
+// Clear all notifications
+router.delete('/clear-all', auth, async (req, res) => {
+    try {
+        const result = await Notification.deleteMany({
+            userId: req.user.userId
+        });
+        
+        res.json({
+            message: `${result.deletedCount} notifications cleared`,
+            deletedCount: result.deletedCount
+        });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error', error: error.message });
+    }
+});
+
 // Delete notification
 router.delete('/:id', auth, async (req, res) => {
     try {
@@ -102,22 +118,6 @@ router.delete('/:id', auth, async (req, res) => {
         }
         
         res.json({ message: 'Notification deleted successfully' });
-    } catch (error) {
-        res.status(500).json({ message: 'Server error', error: error.message });
-    }
-});
-
-// Clear all notifications
-router.delete('/clear-all', auth, async (req, res) => {
-    try {
-        const result = await Notification.deleteMany({
-            userId: req.user.userId
-        });
-        
-        res.json({
-            message: `${result.deletedCount} notifications cleared`,
-            deletedCount: result.deletedCount
-        });
     } catch (error) {
         res.status(500).json({ message: 'Server error', error: error.message });
     }
