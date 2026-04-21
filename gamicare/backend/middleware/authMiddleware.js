@@ -2,7 +2,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Middleware-ka asalka ah ee aad haysato
+// The original middleware for basic authentication
 const auth = (req, res, next) => {
     try {
         const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -19,7 +19,7 @@ const auth = (req, res, next) => {
     }
 };
 
-// Middleware cusub oo ku tabarucaya in user-ka database-ka laga helay
+// Enhanced middleware to fetch the user from the database
 const protect = async (req, res, next) => {
     try {
         const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -30,14 +30,14 @@ const protect = async (req, res, next) => {
         
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
-        // User-ka database-ka ka hel
+        // Find user in the database
         const user = await User.findById(decoded.userId).select('-password');
         
         if (!user) {
             return res.status(401).json({ message: 'User not found' });
         }
         
-        req.user = user; // User-ka oo dhan database-ka ka soo qaad
+        req.user = user; // Fetch full user data from the database
         next();
     } catch (error) {
         if (error.name === 'JsonWebTokenError') {
@@ -50,7 +50,7 @@ const protect = async (req, res, next) => {
     }
 };
 
-// Middleware-ka role-checking
+// Middleware for role-based access control
 const authorize = (...roles) => {
     return (req, res, next) => {
         if (!req.user) {
