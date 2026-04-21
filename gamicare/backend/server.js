@@ -17,15 +17,47 @@ const adminRoutes = require('./routes/admin');
 const doctorRoutes = require('./routes/doctorRoutes');
 const symptomRoutes = require('./routes/symptoms'); // match the file above
 const notificationRoutes = require('./routes/notifications');
-const reportRoutes = require('./routes/reports'); // ← Add this for reports API
+const reportRoutes = require('./routes/reports'); 
 const paymentRoutes = require('./routes/paymentRoutes');
+const settingsRoutes = require('./routes/settingsRoutes');
 const { startReminderJob } = require('./cron/reminderJob');
 
 const app = express();
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+    crossOriginResourcePolicy: false
+}));
 app.use(cors());
+app.options(/^(.*)$/, cors()); // Use Regex for catch-all in Express 5 to avoid path-to-regexp errors
+
+// Manual CORS Fallback for strict browsers (Brave/Safari)
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin) {
+        res.header('Access-Control-Allow-Origin', origin);
+    } else {
+        res.header('Access-Control-Allow-Origin', '*');
+    }
+    
+    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,PATCH,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, Content-Length, X-Requested-With');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
+    // Intercept OPTIONS method
+    if (req.method === 'OPTIONS') {
+        res.sendStatus(200);
+    } else {
+        next();
+    }
+});
+
+// Global Debug Logger
+app.use((req, res, next) => {
+    console.log(`[REQUEST] ${new Date().toISOString()} | ${req.method} | ${req.url}`);
+    next();
+});
+
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -48,9 +80,10 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/symptoms', symptomRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/reports', reportRoutes); // ← Add this for reports
+app.use('/api/reports', reportRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api/users', require('./routes/userRoutes')); // ← Added this for user profiles
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/settings', settingsRoutes);
 
 // Static files for profile pictures
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
