@@ -40,7 +40,7 @@ const buildPatientEmail = (appointment) => {
         <!-- Body -->
         <div style="background: white; padding: 32px 28px;">
             <div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 14px 18px; border-radius: 6px; margin-bottom: 24px;">
-                <p style="margin: 0; font-size: 15px; color: #856404; font-weight: 600;">⏰ Appointment Reminder — 24 Hours Notice</p>
+                <p style="margin: 0; font-size: 15px; color: #856404; font-weight: 600;">Appointment Reminder — 24 Hours Notice</p>
             </div>
 
             <p style="font-size: 16px; color: #333; margin-top: 0;">Dear <strong>${appointment.patientId?.name || 'Patient'}</strong>,</p>
@@ -64,7 +64,7 @@ const buildPatientEmail = (appointment) => {
                         <td style="padding: 8px 0; color: #222; font-weight: 600; font-size: 14px;">${formattedDate}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 8px 0; color: #666; font-size: 14px;">🕐 Time</td>
+                        <td style="padding: 8px 0; color: #666; font-size: 14px;">Time</td>
                         <td style="padding: 8px 0; color: #222; font-weight: 600; font-size: 14px;">${formattedTime}</td>
                     </tr>
                     <tr>
@@ -144,7 +144,7 @@ const buildDoctorEmail = (appointment) => {
                         <td style="padding: 8px 0; color: #222; font-weight: 600; font-size: 14px;">${formattedDate}</td>
                     </tr>
                     <tr>
-                        <td style="padding: 8px 0; color: #666; font-size: 14px;">🕐 Time</td>
+                        <td style="padding: 8px 0; color: #666; font-size: 14px;">Time</td>
                         <td style="padding: 8px 0; color: #222; font-weight: 600; font-size: 14px;">${formattedTime}</td>
                     </tr>
                     ${appointment.reason || appointment.symptoms ? `
@@ -166,7 +166,7 @@ const buildDoctorEmail = (appointment) => {
 
 // Main reminder function
 const sendAppointmentReminders = async () => {
-    console.log('⏰ [Reminder Job] Running at', new Date().toLocaleString());
+    console.log('[Reminder Job] Running at', new Date().toLocaleString());
 
     try {
         // Find appointments happening in the next 23–25 hours window that haven't been reminded
@@ -183,7 +183,7 @@ const sendAppointmentReminders = async () => {
         .populate('doctorId', 'name email specialization roomNumber');
 
         if (upcomingAppointments.length === 0) {
-            console.log('✅ [Reminder Job] No appointments to remind right now.');
+            console.log('[Reminder Job] No appointments to remind right now.');
             return;
         }
 
@@ -200,7 +200,7 @@ const sendAppointmentReminders = async () => {
                 if (patient?._id) {
                     await sendNotification(
                         patient._id,
-                        '⏰ Appointment Reminder',
+                        'Appointment Reminder',
                         `Your appointment with Dr. ${doctor?.name || 'your doctor'} is scheduled for tomorrow at ${formattedTime}.`,
                         'reminder',
                         appointment._id
@@ -222,7 +222,7 @@ const sendAppointmentReminders = async () => {
                 if (patient?.email && process.env.SMTP_USER) {
                     await sendEmail({
                         email: patient.email,
-                        subject: `⏰ Appointment Reminder — ${formattedDate} at ${formattedTime}`,
+                        subject: `Appointment Reminder — ${formattedDate} at ${formattedTime}`,
                         message: `Your appointment with Dr. ${doctor?.name} is tomorrow at ${formattedTime}.`,
                         html: buildPatientEmail(appointment)
                     });
@@ -242,7 +242,7 @@ const sendAppointmentReminders = async () => {
 
                 // ── Mark reminder as sent ────────────────────────────────────────
                 await Appointment.findByIdAndUpdate(appointment._id, { reminderSent: true });
-                console.log(`✅ [Reminder] Done for appointment ${appointment._id}`);
+                console.log(`[Reminder] Done for appointment ${appointment._id}`);
 
             } catch (err) {
                 console.error(`❌ [Reminder] Failed for appointment ${appointment._id}:`, err.message);
@@ -254,4 +254,81 @@ const sendAppointmentReminders = async () => {
     }
 };
 
-module.exports = { sendAppointmentReminders };
+// Short-term reminder function (2 hours before)
+const sendShortTermReminders = async () => {
+    console.log('[Short-term Reminder Job] Running at', new Date().toLocaleString());
+
+    try {
+        // Find appointments happening in the next 1–3 hours window
+        const now = new Date();
+        const windowStart = new Date(now.getTime() + 1 * 60 * 60 * 1000); // 1 hour from now
+        const windowEnd = new Date(now.getTime() + 3 * 60 * 60 * 1000);   // 3 hours from now
+
+        const upcomingAppointments = await Appointment.find({
+            date: { $gte: windowStart, $lte: windowEnd },
+            status: { $in: ['approved', 'pending'] },
+            shortTermReminderSent: false
+        })
+        .populate('patientId', 'name email phone')
+        .populate('doctorId', 'name email specialization roomNumber');
+
+        if (upcomingAppointments.length === 0) {
+            console.log('[Short-term Reminder Job] No appointments to remind right now.');
+            return;
+        }
+
+        console.log(`📋 [Short-term Reminder Job] Found ${upcomingAppointments.length} appointment(s) to remind.`);
+
+        for (const appointment of upcomingAppointments) {
+            const patient = appointment.patientId;
+            const doctor = appointment.doctorId;
+            const formattedTime = formatTime(appointment.time);
+
+            try {
+                // ── IN-APP NOTIFICATION for PATIENT ──────────────────────────────
+                if (patient?._id) {
+                    await sendNotification(
+                        patient._id,
+                        'Appointment Starting Soon! 🏥',
+                        `Reminder: Your appointment with Dr. ${doctor?.name || 'your doctor'} starts at ${formattedTime}. Please be ready!`,
+                        'reminder',
+                        appointment._id
+                    );
+                }
+
+                // ── EMAIL to PATIENT ─────────────────────────────────────────────
+                if (patient?.email && process.env.SMTP_USER) {
+                    await sendEmail({
+                        email: patient.email,
+                        subject: `🚨 Starting Soon: Appointment with Dr. ${doctor?.name} at ${formattedTime}`,
+                        message: `Your appointment with Dr. ${doctor?.name} is starting in less than 2 hours (at ${formattedTime}).`,
+                        html: `
+                        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #16C79A; border-radius: 10px;">
+                            <h2 style="color: #19456B;">🏥 Appointment Starting Soon</h2>
+                            <p>Dear <strong>${patient.name}</strong>,</p>
+                            <p>This is a final reminder that your appointment with <strong>Dr. ${doctor?.name}</strong> is scheduled for today at <strong>${formattedTime}</strong>.</p>
+                            <div style="background: #f0fdf9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                                <p style="margin: 5px 0;"><strong>Time:</strong> ${formattedTime}</p>
+                                <p style="margin: 5px 0;"><strong>Doctor:</strong> Dr. ${doctor?.name}</p>
+                                <p style="margin: 5px 0;"><strong>Specialization:</strong> ${doctor?.specialization}</p>
+                            </div>
+                            <p>Please ensure you are ready 10 minutes before the scheduled time.</p>
+                        </div>`
+                    });
+                }
+
+                // ── Mark short-term reminder as sent ──────────────────────────────
+                await Appointment.findByIdAndUpdate(appointment._id, { shortTermReminderSent: true });
+                console.log(`[Short-term Reminder] Done for appointment ${appointment._id}`);
+
+            } catch (err) {
+                console.error(`❌ [Short-term Reminder] Failed for appointment ${appointment._id}:`, err.message);
+            }
+        }
+
+    } catch (err) {
+        console.error('❌ [Short-term Reminder Job] Unexpected error:', err.message);
+    }
+};
+
+module.exports = { sendAppointmentReminders, sendShortTermReminders };
