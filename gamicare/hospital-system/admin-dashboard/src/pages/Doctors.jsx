@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   FaPlus, FaSearch, FaEdit, FaTrash, FaUserMd, 
   FaFilter, FaEye, FaPhone, FaEnvelope, FaCalendarAlt,
@@ -8,6 +9,7 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 
 const Doctors = () => {
+  const navigate = useNavigate();
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -40,18 +42,7 @@ const Doctors = () => {
     availableTime: []
   });
 
-  const specializations = [
-    'Cardiology',
-    'Dermatology',
-    'Neurology',
-    'Orthopedics',
-    'Pediatrics',
-    'Gynecology',
-    'General Medicine',
-    'Dentistry',
-    'Psychiatry',
-    'Ophthalmology'
-  ];
+  const [specializations, setSpecializations] = useState([]);
 
   const daysOfWeek = [
     'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
@@ -59,6 +50,7 @@ const Doctors = () => {
 
   useEffect(() => {
     fetchDoctors();
+    fetchSpecializations();
   }, []);
 
   const fetchDoctors = async () => {
@@ -68,9 +60,20 @@ const Doctors = () => {
       setDoctors(response.data);
     } catch (error) {
       toast.error('Failed to load doctors');
-      console.error('Error fetching doctors:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSpecializations = async () => {
+    try {
+      const response = await api.get('/admin/departments');
+      const activeDepts = response.data
+        .filter(dept => dept.isActive)
+        .map(dept => dept.name);
+      setSpecializations(activeDepts);
+    } catch (error) {
+      console.error('Failed to load specializations');
     }
   };
 
@@ -128,25 +131,23 @@ const Doctors = () => {
 
   const handleStatusToggle = async (doctorId, currentStatus) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
-    
     try {
       await api.patch(`/admin/doctors/${doctorId}/status`, { status: newStatus });
       toast.success(`Doctor ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`);
       fetchDoctors();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to update status');
+      toast.error('Failed to update status');
     }
   };
 
   const handleDelete = async (doctorId) => {
-    if (!window.confirm('Are you sure you want to delete this doctor? This action cannot be undone.')) return;
-
+    if (!window.confirm('Delete this record permanently?')) return;
     try {
       await api.delete(`/admin/doctors/${doctorId}`);
       toast.success('Doctor deleted successfully');
       fetchDoctors();
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to delete doctor');
+      toast.error('Failed to delete doctor');
     }
   };
 
@@ -157,11 +158,7 @@ const Doctors = () => {
       toast.success('Doctor added successfully');
       setShowAddModal(false);
       setNewDoctor({
-        name: '',
-        email: '',
-        password: '',
-        specialization: '',
-        phone: '',
+        name: '', email: '', password: '', specialization: '', phone: '',
         availableTime: [{ day: 'Monday', startTime: '09:00', endTime: '17:00' }]
       });
       fetchDoctors();
@@ -173,45 +170,21 @@ const Doctors = () => {
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-
-    if (!file.name.endsWith('.csv')) {
-      toast.error('Please select a valid CSV file');
-      return;
-    }
-
     const formData = new FormData();
     formData.append('file', file);
-
     try {
       setUploadingCSV(true);
-      const loadingToast = toast.loading('Uploading doctors...');
-      
-      const response = await api.post('/admin/doctors/import', formData, {
+      await api.post('/admin/doctors/import', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      
-      toast.dismiss(loadingToast);
-      toast.success(response.data.message || 'Doctors imported successfully');
-      
-      if (response.data.errors && response.data.errors.length > 0) {
-         console.warn("Import warning:", response.data.errors);
-         toast.error(`Imported with ${response.data.errors.length} errors/skipped rows.`);
-      }
-      
+      toast.success('Doctors imported successfully');
       fetchDoctors();
     } catch (error) {
-      toast.dismiss();
-      toast.error(error.response?.data?.message || 'Failed to import CSV');
+      toast.error('Failed to import CSV');
     } finally {
       setUploadingCSV(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
-
-  const triggerFileInput = () => {
-    fileInputRef.current?.click();
-  };
-
 
   const addAvailableTimeSlot = () => {
     setEditDoctor({
@@ -233,72 +206,64 @@ const Doctors = () => {
   };
 
   const filteredDoctors = doctors.filter(doctor => {
-    const matchesSearch = doctor.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         doctor.specialization?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         doctor.email?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSpecialization = selectedSpecialization === 'all' || 
-                                 doctor.specialization === selectedSpecialization;
-    const matchesStatus = selectedStatus === 'all' || 
-                         (selectedStatus === 'active' ? doctor.isActive : !doctor.isActive);
-    return matchesSearch && matchesSpecialization && matchesStatus;
+    const query = searchTerm.toLowerCase();
+    const matchesSearch = doctor.name?.toLowerCase().includes(query) ||
+                         doctor.specialization?.toLowerCase().includes(query) ||
+                         doctor.email?.toLowerCase().includes(query);
+    const matchesSpec = selectedSpecialization === 'all' || doctor.specialization === selectedSpecialization;
+    const matchesStatus = selectedStatus === 'all' || (selectedStatus === 'active' ? doctor.isActive : !doctor.isActive);
+    return matchesSearch && matchesSpec && matchesStatus;
   });
-
-  const getStatusColor = (isActive) => {
-    return isActive ? 'bg-gradient-to-r from-[#16C79A]/20 to-[#11698E]/20 text-[#16C79A]' : 'bg-red-100 text-red-800';
-  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#16C79A]"></div>
+      <div className="flex flex-col items-center justify-center h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-gray-100 dark:border-white/5 border-t-[#1e40af] mb-4"></div>
+        <p className="text-gray-400 font-medium animate-pulse">Accessing medical directory...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-gradient-to-br from-[#19456B] to-[#0d2c4a] min-h-screen">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
+    <div className="animate-in fade-in duration-500">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Doctors Management</h1>
-          <p className="text-[#16C79A]/80">Manage all doctors in the system</p>
+          <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight mb-2">
+            Medical <span className="text-[#1e40af] dark:text-blue-400">Staff</span>
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 font-medium">Configure and manage clinical Doctors</p>
         </div>
-        <div className="flex gap-3 mt-4 md:mt-0">
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleFileUpload} 
-            accept=".csv" 
-            className="hidden" 
-          />
+        <div className="flex items-center gap-3">
+          <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".csv" className="hidden" />
           <button 
-            onClick={triggerFileInput}
+            onClick={() => fileInputRef.current?.click()}
             disabled={uploadingCSV}
-            className="px-6 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-xl hover:opacity-90 transition-all flex items-center gap-3 shadow-lg hover:shadow-xl disabled:opacity-50"
+            className="btn btn-secondary flex items-center gap-2"
           >
-            <FaUpload />
-            {uploadingCSV ? 'Uploading...' : 'Upload CSV'}
+            <FaUpload size={14} />
+            {uploadingCSV ? 'Importing...' : 'Batch Import'}
           </button>
           <button 
             onClick={() => setShowAddModal(true)}
-            className="px-6 py-3 bg-gradient-to-r from-[#16C79A] to-[#11698E] text-white rounded-xl hover:opacity-90 transition-all flex items-center gap-3 shadow-lg hover:shadow-xl"
+            className="btn btn-primary flex items-center gap-2"
           >
-            <FaPlus />
-            Add New Doctor
+            <FaPlus size={14} /> Add Doctor
           </button>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-gradient-to-br from-[#19456B] to-[#0d2c4a] border border-[#16C79A]/20 rounded-2xl p-6 mb-6 shadow-xl">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="label text-[#16C79A]/80">Search Doctors</label>
-            <div className="relative">
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#16C79A]/60" />
+      {/* Filters Bar */}
+      <div className="card mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="md:col-span-2">
+            <label className="label">Search Registry</label>
+            <div className="relative group">
+              <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 group-focus-within:text-[#1e40af] transition-colors" />
               <input
                 type="text"
-                placeholder="Search by name, email, or specialization..."
-                className="w-full pl-10 pr-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
+                placeholder="Name, specialization, or email..."
+                className="input pl-12"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -306,131 +271,102 @@ const Doctors = () => {
           </div>
           
           <div>
-            <label className="label text-[#16C79A]/80">Specialization</label>
-            <div className="relative">
-              <FaFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#16C79A]/60" />
-              <select
-                className="w-full pl-10 pr-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
-                value={selectedSpecialization}
-                onChange={(e) => setSelectedSpecialization(e.target.value)}
-              >
-                <option value="all" className="bg-[#0d2c4a]">All Specializations</option>
-                {specializations.map(spec => (
-                  <option key={spec} value={spec} className="bg-[#0d2c4a]">{spec}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-          
-          <div>
-            <label className="label text-[#16C79A]/80">Status</label>
+            <label className="label">Specialization</label>
             <select
-              className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="input cursor-pointer appearance-none"
+              value={selectedSpecialization}
+              onChange={(e) => setSelectedSpecialization(e.target.value)}
             >
-              <option value="all" className="bg-[#0d2c4a]">All Status</option>
-              <option value="active" className="bg-[#0d2c4a]">Active</option>
-              <option value="inactive" className="bg-[#0d2c4a]">Inactive</option>
+              <option value="all">All Specialties</option>
+              {specializations.map(spec => (
+                <option key={spec} value={spec}>{spec}</option>
+              ))}
             </select>
           </div>
           
           <div>
-            <label className="label text-[#16C79A]/80">Sort By</label>
-            <select className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]">
-              <option className="bg-[#0d2c4a]">Name (A-Z)</option>
-              <option className="bg-[#0d2c4a]">Name (Z-A)</option>
-              <option className="bg-[#0d2c4a]">Newest First</option>
-              <option className="bg-[#0d2c4a]">Oldest First</option>
+            <label className="label">Availability Status</label>
+            <select
+              className="input cursor-pointer appearance-none"
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+            >
+              <option value="all">All Status</option>
+              <option value="active">Active Duty</option>
+              <option value="inactive">On Leave</option>
             </select>
           </div>
         </div>
       </div>
 
       {/* Doctors Table */}
-      <div className="bg-gradient-to-br from-[#19456B] to-[#0d2c4a] border border-[#16C79A]/20 rounded-2xl overflow-hidden shadow-xl">
+      <div className="card !p-0 overflow-hidden shadow-xl border-gray-100 dark:border-white/5">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="bg-gradient-to-r from-[#11698E]/20 to-[#19456B]/20 border-b border-[#16C79A]/20">
-                <th className="text-left py-4 px-6 text-[#16C79A] font-medium">Doctor</th>
-                <th className="text-left py-4 px-6 text-[#16C79A] font-medium">Specialization</th>
-                <th className="text-left py-4 px-6 text-[#16C79A] font-medium">Room</th>
-                <th className="text-left py-4 px-6 text-[#16C79A] font-medium">Contact</th>
-                <th className="text-left py-4 px-6 text-[#16C79A] font-medium">Status</th>
-                <th className="text-left py-4 px-6 text-[#16C79A] font-medium">Actions</th>
+              <tr className="bg-gray-50/50 dark:bg-white/5 border-b border-gray-100 dark:border-white/5">
+                <th className="text-left py-5 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Doctor Profile</th>
+                <th className="text-left py-5 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Medical Specialty</th>
+                <th className="text-left py-5 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Contact Intel</th>
+                <th className="text-left py-5 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">State</th>
+                <th className="text-center py-5 px-6 text-[11px] font-black text-gray-400 uppercase tracking-widest">Management</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-50 dark:divide-white/5">
               {filteredDoctors.map((doctor) => (
-                <tr key={doctor._id} className="border-b border-[#16C79A]/10 hover:bg-gradient-to-r from-[#11698E]/10 to-[#19456B]/10 transition-all duration-300">
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-gradient-to-br from-[#16C79A] to-[#11698E] rounded-full flex items-center justify-center text-white font-bold">
+                <tr key={doctor._id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors group">
+                  <td className="py-5 px-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-11 h-11 bg-blue-100 dark:bg-blue-900/30 text-[#1e40af] dark:text-blue-400 rounded-xl flex items-center justify-center font-black shadow-sm group-hover:scale-110 transition-transform">
                         {doctor.name?.charAt(0).toUpperCase()}
                       </div>
                       <div>
-                        <p className="font-medium text-white">Dr. {doctor.name}</p>
-                        <p className="text-sm text-[#16C79A]/70">ID: {doctor._id?.slice(-6)}</p>
+                        <p className="font-bold text-gray-900 dark:text-white group-hover:text-[#1e40af] transition-colors line-clamp-1">Dr. {doctor.name}</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">ROOM: {doctor.roomNumber || 'PENDING'}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="py-4 px-6">
-                    <span className="px-3 py-1 rounded-full bg-gradient-to-r from-[#16C79A]/20 to-[#11698E]/20 text-[#16C79A] text-sm font-medium">
-                      {doctor.specialization || 'N/A'}
+                  <td className="py-5 px-6">
+                    <span className="badge badge-info !text-[10px] !px-2 !py-0.5">
+                      {doctor.specialization || 'General'}
                     </span>
                   </td>
-                  <td className="py-4 px-6 text-white font-medium">
-                    {doctor.roomNumber || 'N/A'}
-                  </td>
-                  <td className="py-4 px-6">
+                  <td className="py-5 px-6">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-sm">
-                        <FaEnvelope className="text-[#16C79A]/60" />
-                        <span className="text-white">{doctor.email}</span>
+                      <div className="flex items-center gap-2 text-xs">
+                        <FaEnvelope className="text-[#1e40af] opacity-40" />
+                        <span className="text-gray-600 dark:text-gray-300 font-medium">{doctor.email}</span>
                       </div>
                       {doctor.phone && (
-                        <div className="flex items-center gap-2 text-sm">
-                          <FaPhone className="text-[#16C79A]/60" />
-                          <span className="text-white">{doctor.phone}</span>
+                        <div className="flex items-center gap-2 text-xs">
+                          <FaPhone className="text-[#1e40af] opacity-40" />
+                          <span className="text-gray-600 dark:text-gray-300 font-medium">{doctor.phone}</span>
                         </div>
                       )}
                     </div>
                   </td>
-                  <td className="py-4 px-6">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(doctor.isActive)}`}>
-                      {doctor.isActive ? 'Active' : 'Inactive'}
+                  <td className="py-5 px-6">
+                    <span className={`badge !text-[10px] !px-2 !py-0.5 shadow-sm ${doctor.isActive ? 'badge-success' : 'badge-danger'}`}>
+                      {doctor.isActive ? 'ACTIVE' : 'INACTIVE'}
                     </span>
                   </td>
-                  <td className="py-4 px-6">
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleViewDoctor(doctor)}
-                        className="p-2 text-[#16C79A] hover:bg-gradient-to-r from-[#16C79A]/20 to-[#11698E]/20 rounded-lg transition-all duration-300"
-                        title="View Details"
-                      >
-                        <FaEye />
+                  <td className="py-5 px-6">
+                    <div className="flex items-center justify-center gap-2">
+                      <button onClick={() => handleViewDoctor(doctor)} className="p-2.5 bg-gray-50 dark:bg-white/5 text-gray-400 hover:bg-[#1e40af] hover:text-white rounded-xl transition-all" title="View Dossier">
+                        <FaEye size={14} />
                       </button>
-                      <button 
-                        onClick={() => handleEditDoctor(doctor)}
-                        className="p-2 text-green-500 hover:bg-green-500/20 rounded-lg transition-all duration-300"
-                        title="Edit Doctor"
-                      >
-                        <FaEdit />
+                      <button onClick={() => handleEditDoctor(doctor)} className="p-2.5 bg-gray-50 dark:bg-white/5 text-gray-400 hover:bg-[#1e40af] hover:text-white rounded-xl transition-all" title="Modify Access">
+                        <FaEdit size={14} />
                       </button>
                       <button 
                         onClick={() => handleStatusToggle(doctor._id, doctor.isActive ? 'active' : 'inactive')}
-                        className={`p-2 rounded-lg transition-all duration-300 ${doctor.isActive ? 'text-yellow-500 hover:bg-yellow-500/20' : 'text-green-500 hover:bg-green-500/20'}`}
-                        title={doctor.isActive ? 'Deactivate' : 'Activate'}
+                        className={`p-2.5 rounded-xl transition-all ${doctor.isActive ? 'bg-amber-50 text-amber-600 hover:bg-amber-600' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600'} hover:text-white`}
+                        title={doctor.isActive ? 'Put on Leave' : 'Mark as Active'}
                       >
-                        {doctor.isActive ? <FaTimes /> : <FaCheck />}
+                        {doctor.isActive ? <FaTimes size={14} /> : <FaCheck size={14} />}
                       </button>
-                      <button 
-                        onClick={() => handleDelete(doctor._id)}
-                        className="p-2 text-red-500 hover:bg-red-500/20 rounded-lg transition-all duration-300"
-                        title="Delete Doctor"
-                      >
-                        <FaTrash />
+                      <button onClick={() => handleDelete(doctor._id)} className="p-2.5 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white rounded-xl transition-all" title="Remove Record">
+                        <FaTrash size={14} />
                       </button>
                     </div>
                   </td>
@@ -441,413 +377,180 @@ const Doctors = () => {
         </div>
 
         {filteredDoctors.length === 0 && (
-          <div className="text-center py-12">
-            <FaUserMd className="text-5xl text-[#16C79A]/30 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-white">No doctors found</h3>
-            <p className="text-[#16C79A]/70">Try adjusting your search criteria</p>
+          <div className="text-center py-24 bg-gray-50/30 dark:bg-white/2">
+            <div className="w-20 h-20 bg-gray-100 dark:bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-4 text-gray-300 dark:text-gray-600">
+              <FaUserMd size={40} />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Medical Directory Empty</h3>
+            <p className="text-gray-400 max-w-xs mx-auto text-sm">No Doctors were found matching your current parameters.</p>
           </div>
         )}
       </div>
 
-      {/* Add Doctor Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-[#19456B] to-[#0d2c4a] border border-[#16C79A]/20 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-[#16C79A]/20 flex justify-between items-center">
-              <h3 className="text-xl font-semibold text-white">Add New Doctor</h3>
-              <button 
-                onClick={() => setShowAddModal(false)}
-                className="text-[#16C79A] hover:text-white transition-colors"
-              >
-                <FaTimes />
-              </button>
+      {/* Doctor Modals */}
+      {(showAddModal || showEditModal) && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+          <div className="card w-full max-w-2xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200 border-gray-100 dark:border-white/10 shadow-2xl">
+            <div className="flex justify-between items-center mb-8 pb-4 border-b border-gray-50 dark:border-white/5">
+              <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+                {showAddModal ? 'Onboard Doctor' : 'Modify Record'}
+              </h3>
+              <button onClick={() => { setShowAddModal(false); setShowEditModal(false); }} className="p-2 text-gray-400 hover:text-[#1e40af] transition-colors"><FaTimes /></button>
             </div>
             
-            <form onSubmit={handleAddDoctor} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={showAddModal ? handleAddDoctor : handleUpdateDoctor} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="label text-[#16C79A]/80">Full Name *</label>
+                  <label className="label">Doctor Name</label>
                   <input
                     type="text"
-                    className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
-                    value={newDoctor.name}
-                    onChange={(e) => setNewDoctor({...newDoctor, name: e.target.value})}
+                    className="input"
+                    value={showAddModal ? newDoctor.name : editDoctor.name}
+                    onChange={(e) => showAddModal ? setNewDoctor({...newDoctor, name: e.target.value}) : setEditDoctor({...editDoctor, name: e.target.value})}
                     required
                   />
                 </div>
-                
                 <div>
-                  <label className="label text-[#16C79A]/80">Email *</label>
+                  <label className="label">Access Email</label>
                   <input
                     type="email"
-                    className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
-                    value={newDoctor.email}
-                    onChange={(e) => setNewDoctor({...newDoctor, email: e.target.value})}
+                    className="input"
+                    value={showAddModal ? newDoctor.email : editDoctor.email}
+                    onChange={(e) => showAddModal ? setNewDoctor({...newDoctor, email: e.target.value}) : setEditDoctor({...editDoctor, email: e.target.value})}
                     required
                   />
                 </div>
-                
-                <div>
-                  <label className="label text-[#16C79A]/80">Password *</label>
-                  <input
-                    type="password"
-                    id="new-doctor-password"
-                    name="password"
-                    autocomplete="new-password"
-                    className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
-                    value={newDoctor.password}
-                    onChange={(e) => setNewDoctor({...newDoctor, password: e.target.value})}
-                    required
-                    minLength="6"
-                  />
-                </div>
-                
-                <div>
-                  <label className="label text-[#16C79A]/80">Specialization *</label>
-                  <select
-                    className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
-                    value={newDoctor.specialization}
-                    onChange={(e) => setNewDoctor({...newDoctor, specialization: e.target.value})}
-                    required
-                  >
-                    <option value="" className="bg-[#0d2c4a]">Select Specialization</option>
-                    {specializations.map(spec => (
-                      <option key={spec} value={spec} className="bg-[#0d2c4a]">{spec}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="label text-[#16C79A]/80">Phone Number</label>
-                  <input
-                    type="tel"
-                    className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
-                    value={newDoctor.phone}
-                    onChange={(e) => setNewDoctor({...newDoctor, phone: e.target.value})}
-                    placeholder="+91 9876543210"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-xl hover:opacity-90 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-[#16C79A] to-[#11698E] text-white rounded-xl hover:opacity-90 transition-all"
-                >
-                  Add Doctor
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Doctor Modal */}
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-[#19456B] to-[#0d2c4a] border border-[#16C79A]/20 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-[#16C79A]/20 flex justify-between items-center">
-              <h3 className="text-xl font-semibold text-white">Edit Doctor</h3>
-              <button 
-                onClick={() => setShowEditModal(false)}
-                className="text-[#16C79A] hover:text-white transition-colors"
-              >
-                <FaTimes />
-              </button>
-            </div>
-            
-            <form onSubmit={handleUpdateDoctor} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="label text-[#16C79A]/80">Full Name *</label>
-                  <input
-                    type="text"
-                    className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
-                    value={editDoctor.name}
-                    onChange={(e) => setEditDoctor({...editDoctor, name: e.target.value})}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="label text-[#16C79A]/80">Email *</label>
-                  <input
-                    type="email"
-                    className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
-                    value={editDoctor.email}
-                    onChange={(e) => setEditDoctor({...editDoctor, email: e.target.value})}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="label text-[#16C79A]/80">Specialization *</label>
-                  <select
-                    className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
-                    value={editDoctor.specialization}
-                    onChange={(e) => setEditDoctor({...editDoctor, specialization: e.target.value})}
-                    required
-                  >
-                    <option value="" className="bg-[#0d2c4a]">Select Specialization</option>
-                    {specializations.map(spec => (
-                      <option key={spec} value={spec} className="bg-[#0d2c4a]">{spec}</option>
-                    ))}
-                  </select>
-                </div>
-                
-                <div>
-                  <label className="label text-[#16C79A]/80">Phone Number</label>
-                  <input
-                    type="tel"
-                    className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
-                    value={editDoctor.phone}
-                    onChange={(e) => setEditDoctor({...editDoctor, phone: e.target.value})}
-                    placeholder="+91 9876543210"
-                  />
-                </div>
-                
-                <div>
-                  <label className="label text-[#16C79A]/80">Status</label>
-                  <select
-                    className="w-full px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-[#16C79A]"
-                    value={editDoctor.status}
-                    onChange={(e) => setEditDoctor({...editDoctor, status: e.target.value})}
-                  >
-                    <option value="active" className="bg-[#0d2c4a]">Active</option>
-                    <option value="inactive" className="bg-[#0d2c4a]">Inactive</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <label className="label text-[#16C79A]/80">Available Time Slots</label>
-                  <button
-                    type="button"
-                    onClick={addAvailableTimeSlot}
-                    className="text-sm text-[#16C79A] hover:text-white flex items-center gap-1 transition-colors"
-                  >
-                    <FaPlus /> Add Time Slot
-                  </button>
-                </div>
-                
-                {editDoctor.availableTime.map((slot, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3 p-3 bg-gradient-to-r from-[#11698E]/10 to-[#19456B]/10 rounded-lg border border-[#16C79A]/20">
-                    <div>
-                      <label className="label text-sm text-[#16C79A]/80">Day</label>
-                      <select
-                        className="w-full px-3 py-2 bg-[#0d2c4a] border border-[#16C79A]/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#16C79A]"
-                        value={slot.day}
-                        onChange={(e) => updateTimeSlot(index, 'day', e.target.value)}
-                      >
-                        {daysOfWeek.map(day => (
-                          <option key={day} value={day} className="bg-[#0d2c4a]">{day}</option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="label text-sm text-[#16C79A]/80">Start Time</label>
-                      <input
-                        type="time"
-                        className="w-full px-3 py-2 bg-[#0d2c4a] border border-[#16C79A]/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#16C79A]"
-                        value={slot.startTime}
-                        onChange={(e) => updateTimeSlot(index, 'startTime', e.target.value)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-end gap-2">
-                      <div className="flex-1">
-                        <label className="label text-sm text-[#16C79A]/80">End Time</label>
-                        <input
-                          type="time"
-                          className="w-full px-3 py-2 bg-[#0d2c4a] border border-[#16C79A]/20 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-[#16C79A]"
-                          value={slot.endTime}
-                          onChange={(e) => updateTimeSlot(index, 'endTime', e.target.value)}
-                        />
-                      </div>
-                      {editDoctor.availableTime.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => removeAvailableTimeSlot(index)}
-                          className="p-2 text-red-500 hover:text-red-300 transition-colors"
-                        >
-                          <FaTrash />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="flex gap-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-xl hover:opacity-90 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-[#16C79A] to-[#11698E] text-white rounded-xl hover:opacity-90 transition-all"
-                >
-                  Update Doctor
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* View Doctor Modal */}
-      {showViewModal && selectedDoctor && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-[#19456B] to-[#0d2c4a] border border-[#16C79A]/20 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-[#16C79A]/20 flex justify-between items-center">
-              <h3 className="text-xl font-semibold text-white">Doctor Details</h3>
-              <button 
-                onClick={() => setShowViewModal(false)}
-                className="text-[#16C79A] hover:text-white transition-colors"
-              >
-                <FaTimes />
-              </button>
-            </div>
-            
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="col-span-1 flex flex-col items-center">
-                  <div className="w-32 h-32 bg-gradient-to-br from-[#16C79A] to-[#11698E] rounded-full mb-4 flex items-center justify-center text-white text-4xl font-bold">
-                    {selectedDoctor.name?.charAt(0).toUpperCase()}
-                  </div>
-                  <h2 className="text-2xl font-bold text-white">Dr. {selectedDoctor.name}</h2>
-                  <span className={`px-3 py-1 rounded-full text-sm font-medium mt-2 ${getStatusColor(selectedDoctor.isActive)}`}>
-                    {selectedDoctor.isActive ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-                
-                <div className="col-span-2 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="label text-[#16C79A]/80">Email</label>
-                      <div className="px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white">{selectedDoctor.email}</div>
-                    </div>
-                    
-                    <div>
-                      <label className="label text-[#16C79A]/80">Phone</label>
-                      <div className="px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white">{selectedDoctor.phone || 'N/A'}</div>
-                    </div>
-                    
-                    <div>
-                      <label className="label text-[#16C79A]/80">Specialization</label>
-                      <div className="px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white">{selectedDoctor.specialization || 'N/A'}</div>
-                    </div>
-                    
-                    <div>
-                      <label className="label text-[#16C79A]/80">Doctor ID</label>
-                      <div className="px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white text-sm">{selectedDoctor._id}</div>
-                    </div>
-                    
-                    <div>
-                      <label className="label text-[#16C79A]/80">Assigned Room</label>
-                      <div className="px-4 py-3 bg-[#0d2c4a] border border-[#16C79A]/20 rounded-lg text-white font-bold">{selectedDoctor.roomNumber || 'N/A'}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="mb-8">
-                <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <FaCalendarAlt className="text-[#16C79A]" /> Available Time
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {selectedDoctor.availableTime?.map((slot, index) => (
-                    <div key={index} className="bg-gradient-to-r from-[#16C79A]/10 to-[#11698E]/10 p-3 rounded-lg border border-[#16C79A]/20">
-                      <div className="font-medium text-white">{slot.day}</div>
-                      <div className="text-sm text-[#16C79A]/80">
-                        {slot.startTime} - {slot.endTime}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <div>
-                <h4 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                  <FaUserInjured className="text-[#16C79A]" /> Recent Appointments
-                </h4>
-                {loadingAppointments ? (
-                  <div className="text-center py-4">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#16C79A] mx-auto"></div>
-                  </div>
-                ) : doctorAppointments.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-[#16C79A]/20">
-                          <th className="text-left py-2 px-3 text-sm font-medium text-[#16C79A]">Patient</th>
-                          <th className="text-left py-2 px-3 text-sm font-medium text-[#16C79A]">Date</th>
-                          <th className="text-left py-2 px-3 text-sm font-medium text-[#16C79A]">Time</th>
-                          <th className="text-left py-2 px-3 text-sm font-medium text-[#16C79A]">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {doctorAppointments.slice(0, 5).map((appointment) => (
-                          <tr key={appointment._id} className="border-b border-[#16C79A]/10 hover:bg-gradient-to-r from-[#11698E]/10 to-[#19456B]/10 transition-all duration-300">
-                            <td className="py-2 px-3">
-                              <div className="flex items-center gap-2">
-                                <FaUserInjured className="text-[#16C79A]/60" />
-                                <span className="text-white">{appointment.patientId?.name}</span>
-                              </div>
-                            </td>
-                            <td className="py-2 px-3 text-white">{new Date(appointment.date).toLocaleDateString()}</td>
-                            <td className="py-2 px-3 text-white">{appointment.time}</td>
-                            <td className="py-2 px-3">
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-                                appointment.status === 'approved' ? 'bg-gradient-to-r from-[#16C79A]/20 to-[#11698E]/20 text-[#16C79A]' :
-                                appointment.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                appointment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                'bg-blue-100 text-blue-800'
-                              }`}>
-                                {appointment.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-6 text-[#16C79A]/70">
-                    <FaClock className="text-3xl mx-auto mb-2" />
-                    <p className="text-white">No appointments found for this doctor</p>
+                {showAddModal && (
+                  <div>
+                    <label className="label">Secure Password</label>
+                    <input
+                      type="password"
+                      className="input"
+                      value={newDoctor.password}
+                      onChange={(e) => setNewDoctor({...newDoctor, password: e.target.value})}
+                      required
+                    />
                   </div>
                 )}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="label !mb-0">Medical Specialty</label>
+                    <button 
+                      type="button" 
+                      onClick={() => navigate('/departments')}
+                      className="text-[10px] font-black text-[#1e40af] dark:text-blue-400 hover:underline"
+                    >
+                      + Manage Departments
+                    </button>
+                  </div>
+                  <select
+                    className="input"
+                    value={showAddModal ? newDoctor.specialization : editDoctor.specialization}
+                    onChange={(e) => showAddModal ? setNewDoctor({...newDoctor, specialization: e.target.value}) : setEditDoctor({...editDoctor, specialization: e.target.value})}
+                    required
+                  >
+                    <option value="">Select Specialization</option>
+                    {specializations.map(spec => (<option key={spec} value={spec}>{spec}</option>))}
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Contact Number</label>
+                  <input
+                    type="tel"
+                    className="input"
+                    value={showAddModal ? newDoctor.phone : editDoctor.phone}
+                    onChange={(e) => showAddModal ? setNewDoctor({...newDoctor, phone: e.target.value}) : setEditDoctor({...editDoctor, phone: e.target.value})}
+                    placeholder="+91 XXXXX XXXXX"
+                  />
+                </div>
               </div>
+
+              {!showAddModal && (
+                <div className="pt-4 border-t border-gray-50 dark:border-white/5">
+                  <div className="flex justify-between items-center mb-4">
+                    <label className="label !mb-0">Clinical Availability</label>
+                    <button type="button" onClick={addAvailableTimeSlot} className="text-xs font-black text-[#1e40af] dark:text-blue-400 hover:underline">Add Slot</button>
+                  </div>
+                  <div className="space-y-2">
+                    {editDoctor.availableTime.map((slot, index) => (
+                      <div key={index} className="flex gap-2 items-center bg-gray-50 dark:bg-white/5 p-3 rounded-xl border border-gray-100 dark:border-white/5">
+                        <select className="input !py-1.5 text-xs" value={slot.day} onChange={(e) => updateTimeSlot(index, 'day', e.target.value)}>
+                          {daysOfWeek.map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                        <input type="time" className="input !py-1.5 text-xs" value={slot.startTime} onChange={(e) => updateTimeSlot(index, 'startTime', e.target.value)} />
+                        <input type="time" className="input !py-1.5 text-xs" value={slot.endTime} onChange={(e) => updateTimeSlot(index, 'endTime', e.target.value)} />
+                        <button type="button" onClick={() => removeAvailableTimeSlot(index)} className="p-2 text-red-400 hover:text-red-600"><FaTrash size={12} /></button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               
-              <div className="flex gap-4 pt-6">
-                <button
-                  onClick={() => setShowViewModal(false)}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-gray-600 to-gray-700 text-white rounded-xl hover:opacity-90 transition-all"
-                >
-                  Close
-                </button>
-                <button
-                  onClick={() => {
-                    setShowViewModal(false);
-                    handleEditDoctor(selectedDoctor);
-                  }}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-[#16C79A] to-[#11698E] text-white rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2"
-                >
-                  <FaEdit /> Edit Doctor
-                </button>
+              <div className="flex gap-4 pt-8">
+                <button type="button" onClick={() => { setShowAddModal(false); setShowEditModal(false); }} className="btn btn-secondary flex-1">Abort</button>
+                <button type="submit" className="btn btn-primary flex-1">Confirm Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* View Modal */}
+      {showViewModal && selectedDoctor && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+          <div className="card w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200 border-gray-100 dark:border-white/10 shadow-2xl !p-0">
+            <div className="h-32 bg-gradient-to-r from-[#1e40af] to-[#3b82f6] relative">
+               <button onClick={() => setShowViewModal(false)} className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full transition-all"><FaTimes /></button>
+            </div>
+            <div className="px-8 pb-8 -mt-12">
+              <div className="flex flex-col md:flex-row gap-6 items-end mb-8">
+                <div className="w-32 h-32 bg-white dark:bg-[#0f172a] p-2 rounded-3xl shadow-xl border-4 border-white dark:border-[#0f172a]">
+                  <div className="w-full h-full bg-blue-100 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-[#1e40af] dark:text-blue-400 text-4xl font-black">
+                    {selectedDoctor.name?.charAt(0).toUpperCase()}
+                  </div>
+                </div>
+                <div className="flex-1 pb-2">
+                  <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Dr. {selectedDoctor.name}</h2>
+                  <p className="text-[#1e40af] dark:text-blue-400 font-bold uppercase text-xs tracking-widest mt-1">{selectedDoctor.specialization || 'Clinical Staff'}</p>
+                </div>
+                <div className="flex gap-2 pb-2">
+                  <button onClick={() => { setShowViewModal(false); handleEditDoctor(selectedDoctor); }} className="btn btn-secondary !py-2 !text-xs">Edit Doctor</button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 dark:border-white/5 pb-2">Doctor Intel</h4>
+                  <div className="grid grid-cols-1 gap-4">
+                    {[
+                      { label: 'System Access', value: selectedDoctor.email, icon: FaEnvelope },
+                      { label: 'Authorized Phone', value: selectedDoctor.phone || 'N/A', icon: FaPhone },
+                      { label: 'Station ID', value: selectedDoctor.roomNumber || 'NOT ASSIGNED', icon: FaUserMd },
+                    ].map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-4 bg-gray-50/50 dark:bg-white/2 p-4 rounded-2xl border border-gray-100 dark:border-white/5">
+                        <item.icon className="text-[#1e40af] opacity-40" />
+                        <div>
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{item.label}</p>
+                          <p className="font-bold text-gray-900 dark:text-white text-sm">{item.value}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest border-b border-gray-100 dark:border-white/5 pb-2">Clinical Availability</h4>
+                  <div className="grid grid-cols-1 gap-2">
+                    {selectedDoctor.availableTime?.map((slot, index) => (
+                      <div key={index} className="flex justify-between items-center p-3 bg-gray-50/50 dark:bg-white/2 rounded-xl border border-gray-100 dark:border-white/5">
+                        <span className="font-bold text-gray-900 dark:text-white text-sm">{slot.day}</span>
+                        <span className="text-gray-500 dark:text-gray-400 font-medium text-xs bg-white dark:bg-white/5 px-3 py-1 rounded-lg border border-gray-100 dark:border-white/5 shadow-sm">
+                          {slot.startTime} — {slot.endTime}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
