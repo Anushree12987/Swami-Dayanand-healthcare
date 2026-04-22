@@ -10,6 +10,9 @@ import Patients from './pages/Patients';
 import Appointments from './pages/Appointments';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
+import Departments from './pages/Departments';
+import Broadcast from './pages/Broadcast';
+import ForgotPassword from './pages/ForgotPassword';
 
 // Layout
 import Layout from './components/layout/Layout';
@@ -25,15 +28,18 @@ function App() {
         <Routes>
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* Protected Admin Routes */}
           <Route path="/" element={<Layout />}>
             <Route index element={<Navigate to="/dashboard" />} />
             <Route path="dashboard" element={<Dashboard />} />
             <Route path="doctors" element={<Doctors />} />
+            <Route path="departments" element={<Departments />} />
             <Route path="patients" element={<Patients />} />
             <Route path="appointments" element={<Appointments />} />
             <Route path="reports" element={<Reports />} />
+            <Route path="broadcast" element={<Broadcast />} />
             <Route path="settings" element={<Settings />} />
           </Route>
 
