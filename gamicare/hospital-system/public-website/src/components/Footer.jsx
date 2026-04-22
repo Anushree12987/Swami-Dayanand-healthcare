@@ -32,7 +32,7 @@ const Footer = () => {
     {
       icon: <Phone className="h-4 w-4" />,
       text: '+91 11 2258 8585',
-      href: 'tel:+252611234567'
+      href: 'tel:+911122588585'
     },
     {
       icon: <Mail className="h-4 w-4" />,
@@ -74,7 +74,7 @@ const Footer = () => {
   ];
 
   return (
-    <footer className="bg-gradient-to-b from-blue-900 to-gray-900 text-white">
+    <footer className="bg-gradient-to-b from-blue-900 to-gray-900 text-gray-900 dark:text-white">
       {/* Top Section with Blue Gradient */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -83,7 +83,7 @@ const Footer = () => {
             <div className="flex flex-col md:flex-row items-center gap-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-lg">
-                  <Shield className="h-6 w-6 text-white" />
+                  <Shield className="h-6 w-6 text-gray-900 dark:text-white" />
                 </div>
                 <div>
                   <div className="text-lg font-bold">Certified</div>
@@ -93,7 +93,7 @@ const Footer = () => {
               
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-lg">
-                  <Clock className="h-6 w-6 text-white" />
+                  <Clock className="h-6 w-6 text-gray-900 dark:text-white" />
                 </div>
                 <div>
                   <div className="text-lg font-bold">24/7</div>
@@ -106,7 +106,7 @@ const Footer = () => {
             <div className="text-center">
               <h3 className="text-xl font-bold mb-2">Need Emergency Care?</h3>
               <a 
-                href="tel:+252611234567"
+                href="tel:+911122588585"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-white text-blue-600 rounded-xl hover:bg-blue-50 transition-colors duration-300 font-bold text-lg"
               >
                 <Phone className="h-5 w-5" />
@@ -138,7 +138,7 @@ const Footer = () => {
           <div>
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl">
-                <Hospital className="h-6 w-6 text-white" />
+                <Hospital className="h-6 w-6 text-gray-900 dark:text-white" />
               </div>
               <div>
                 <h2 className="text-2xl font-bold tracking-tight">
@@ -168,7 +168,7 @@ const Footer = () => {
                 <li key={link.path}>
                   <Link
                     to={link.path}
-                    className="flex items-center gap-2 text-gray-300 hover:text-white hover:translate-x-1 transition-all duration-200 group"
+                    className="flex items-center gap-2 text-gray-300 hover:text-gray-900 dark:text-white hover:translate-x-1 transition-all duration-200 group"
                   >
                     <ChevronRight className="h-3 w-3 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                     {link.label}
@@ -189,7 +189,7 @@ const Footer = () => {
               {services.map((service, index) => (
                 <li key={index} className="flex items-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                  <span className="text-gray-300 hover:text-white transition-colors cursor-pointer">
+                  <span className="text-gray-300 hover:text-gray-900 dark:text-white transition-colors cursor-pointer">
                     {service}
                   </span>
                 </li>
@@ -208,10 +208,10 @@ const Footer = () => {
                 <a
                   key={index}
                   href={info.href}
-                  className="flex items-center gap-3 text-gray-300 hover:text-white group transition-colors duration-200"
+                  className="flex items-center gap-3 text-gray-300 hover:text-gray-900 dark:text-white group transition-colors duration-200"
                 >
                   <div className="p-2 bg-blue-900/50 rounded-lg group-hover:bg-blue-800 transition-colors">
-                    <div className="text-blue-400 group-hover:text-white">
+                    <div className="text-blue-400 group-hover:text-gray-900 dark:text-white">
                       {info.icon}
                     </div>
                   </div>
@@ -229,7 +229,7 @@ const Footer = () => {
                   placeholder="Your email"
                   className="flex-1 px-4 py-2 bg-blue-900/50 border border-blue-800 rounded-l-lg focus:outline-none focus:border-blue-500 text-white placeholder-gray-400"
                 />
-                <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-r-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 font-medium">
+                <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-gray-900 dark:text-white rounded-r-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 font-medium">
                   Subscribe
                 </button>
               </div>

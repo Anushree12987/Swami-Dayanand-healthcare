@@ -34,7 +34,7 @@ const Header = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group">
             <div className="p-2 bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl shadow-md group-hover:shadow-lg transition-shadow duration-300">
-              <Hospital className="h-6 w-6 text-white" />
+              <Hospital className="h-6 w-6 text-gray-900 dark:text-white" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900 tracking-tight">
@@ -61,7 +61,7 @@ const Header = () => {
               <div className="flex items-center gap-4 ml-4 pl-4 border-l border-gray-200">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center">
-                    <User className="h-4 w-4 text-white" />
+                    <User className="h-4 w-4 text-gray-900 dark:text-white" />
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">{user.name}</p>
@@ -71,7 +71,7 @@ const Header = () => {
                 
                 <Link
                   to="/patient/dashboard"
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 font-medium shadow-sm hover:shadow-md"
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-gray-900 dark:text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 font-medium shadow-sm hover:shadow-md"
                 >
                   <LayoutDashboard className="h-4 w-4" />
                   Dashboard
@@ -98,7 +98,7 @@ const Header = () => {
                 
                 <Link
                   to="/register"
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 font-medium shadow-sm hover:shadow-md"
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-gray-900 dark:text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 font-medium shadow-sm hover:shadow-md"
                 >
                   <User className="h-4 w-4" />
                   Register
@@ -146,7 +146,7 @@ const Header = () => {
                     {/* User Info */}
                     <div className="flex items-center gap-3 px-4 py-3 mb-4 bg-blue-50 rounded-lg">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-r from-blue-600 to-blue-700 flex items-center justify-center">
-                        <User className="h-5 w-5 text-white" />
+                        <User className="h-5 w-5 text-gray-900 dark:text-white" />
                       </div>
                       <div>
                         <p className="text-sm font-semibold text-gray-900">{user.name}</p>
@@ -157,7 +157,7 @@ const Header = () => {
                     {/* Dashboard Button */}
                     <Link
                       to="/patient/dashboard"
-                      className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 font-medium mb-3 mx-4"
+                      className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-gray-900 dark:text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 font-medium mb-3 mx-4"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <LayoutDashboard className="h-4 w-4" />
@@ -189,7 +189,7 @@ const Header = () => {
                     
                     <Link
                       to="/register"
-                      className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 font-medium shadow-sm"
+                      className="flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-gray-900 dark:text-white rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-300 font-medium shadow-sm"
                       onClick={() => setIsMenuOpen(false)}
                     >
                       <User className="h-4 w-4" />
