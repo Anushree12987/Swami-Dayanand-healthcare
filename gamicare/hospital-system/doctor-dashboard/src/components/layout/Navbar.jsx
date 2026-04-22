@@ -13,6 +13,7 @@ const Navbar = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const [expandedNotifId, setExpandedNotifId] = useState(null)
 
   const fetchNotifications = async () => {
     try {
@@ -141,7 +142,10 @@ const Navbar = () => {
                           <div 
                             key={notif._id}
                             className={`p-4 border-b border-gray-100 dark:border-[#2563EB]/10 hover:bg-blue-50 dark:hover:bg-[#2563EB]/10 transition-colors group cursor-pointer ${!notif.isRead ? 'bg-blue-50/30 dark:bg-[#2563EB]/5' : ''}`}
-                            onClick={() => !notif.isRead && markAsRead(notif._id)}
+                            onClick={() => {
+                              if (!notif.isRead) markAsRead(notif._id)
+                              setExpandedNotifId(expandedNotifId === notif._id ? null : notif._id)
+                            }}
                           >
                             <div className="flex justify-between items-start gap-2 mb-1">
                               <p className={`font-semibold text-sm ${!notif.isRead ? 'text-blue-900 dark:text-white' : 'text-gray-700 dark:text-white/70'}`}>
@@ -151,7 +155,7 @@ const Navbar = () => {
                                 <div className="w-2 h-2 bg-blue-500 dark:bg-[#2563EB] rounded-full mt-1.5"></div>
                               )}
                             </div>
-                            <p className="text-xs text-gray-500 dark:text-white/50 line-clamp-2 leading-relaxed">
+                            <p className={`text-xs text-gray-500 dark:text-white/50 leading-relaxed transition-all duration-300 ${expandedNotifId === notif._id ? 'line-clamp-none' : 'line-clamp-2'}`}>
                               {notif.message}
                             </p>
                             <p className="text-[10px] text-gray-400 dark:text-white/30 mt-2 font-medium">

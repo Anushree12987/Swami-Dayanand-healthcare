@@ -148,7 +148,7 @@ const AppointmentModal = ({ appointment, onClose, onAction }) => {
               <>
                 <button
                   onClick={() => onAction?.('approve', appointment._id)}
-                  className="flex-1 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
                 >
                   Approve Appointment
                 </button>

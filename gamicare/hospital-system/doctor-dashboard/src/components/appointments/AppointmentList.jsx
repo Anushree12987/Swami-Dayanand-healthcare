@@ -16,7 +16,7 @@ import {
 const AppointmentList = ({ appointments, onStatusUpdate, showActions = false }) => {
   const getStatusColor = (status) => {
     switch (status) {
-      case 'approved': return 'bg-green-100 text-green-800'
+      case 'approved': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
       case 'pending': return 'bg-yellow-100 text-yellow-800'
       case 'cancelled': return 'bg-red-100 text-red-800'
       case 'completed': return 'bg-blue-100 text-blue-800'
@@ -62,7 +62,7 @@ const AppointmentList = ({ appointments, onStatusUpdate, showActions = false }) 
                       <div className="flex flex-wrap items-center gap-4 mb-2">
                         <div className="flex items-center gap-2">
                           <StatusIcon className={`h-4 w-4 ${
-                            appointment.status === 'approved' ? 'text-green-600' :
+                            appointment.status === 'approved' ? 'text-blue-600' :
                             appointment.status === 'pending' ? 'text-yellow-600' :
                             appointment.status === 'cancelled' ? 'text-red-600' :
                             'text-gray-600'
@@ -115,7 +115,7 @@ const AppointmentList = ({ appointments, onStatusUpdate, showActions = false }) 
                   <div className="flex flex-col sm:flex-row gap-2">
                     <button
                       onClick={() => onStatusUpdate?.(appointment._id, 'approved')}
-                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2 justify-center"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 justify-center"
                     >
                       <CheckCircle className="h-4 w-4" />
                       Approve

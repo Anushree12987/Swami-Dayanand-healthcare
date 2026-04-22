@@ -1,4 +1,5 @@
 import React from 'react'
+import { Link } from 'react-router-dom'
 import { 
   Calendar, 
   Clock, 
@@ -8,7 +9,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  MoreVertical
+  MoreVertical,
+  Video
 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -21,7 +23,7 @@ const AppointmentCard = ({
 }) => {
   const getStatusColor = (status) => {
     switch (status) {
-      case 'approved': return 'bg-green-100 text-green-800'
+      case 'approved': return 'bg-blue-100 text-blue-800'
       case 'pending': return 'bg-yellow-100 text-yellow-800'
       case 'cancelled': return 'bg-red-100 text-red-800'
       case 'completed': return 'bg-blue-100 text-blue-800'
@@ -55,7 +57,7 @@ const AppointmentCard = ({
               <div className="flex flex-wrap items-center gap-3 mb-3">
                 <div className="flex items-center gap-2">
                   <StatusIcon className={`h-4 w-4 ${
-                    appointment.status === 'approved' ? 'text-green-600' :
+                    appointment.status === 'approved' ? 'text-blue-600' :
                     appointment.status === 'pending' ? 'text-yellow-600' :
                     appointment.status === 'cancelled' ? 'text-red-600' :
                     'text-gray-600'
@@ -131,7 +133,7 @@ const AppointmentCard = ({
               <>
                 <button
                   onClick={() => onApprove?.(appointment._id)}
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   <CheckCircle className="h-4 w-4" />
                   Approve
@@ -144,6 +146,16 @@ const AppointmentCard = ({
                   Cancel
                 </button>
               </>
+            )}
+
+            {appointment.status === 'approved' && appointment.type === 'Virtual' && appointment.roomID && (
+              <Link
+                to={`/consultation/${appointment.roomID}`}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 animate-pulse font-bold"
+              >
+                <Video className="h-4 w-4" />
+                Join Call
+              </Link>
             )}
             
             <button
