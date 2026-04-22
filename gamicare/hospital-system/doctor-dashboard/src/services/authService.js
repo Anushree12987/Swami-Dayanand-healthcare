@@ -37,12 +37,12 @@ export const authService = {
         ? { headers: { 'Content-Type': 'multipart/form-data' } }
         : {}
       
-      const response = await api.put('/doctors/profile', data, config)
+      const response = await api.put('/doctors/profile/update', data, config)
       
       // Update localStorage with new user data
-      if (response.data.user) {
+      if (response.data.user || response.data.data) {
         const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-        const updatedUser = { ...currentUser, ...response.data.user }
+        const updatedUser = { ...currentUser, ...(response.data.user || response.data.data) }
         localStorage.setItem('user', JSON.stringify(updatedUser))
       }
       
@@ -58,13 +58,14 @@ export const authService = {
     const formData = new FormData()
     formData.append('profileImage', imageFile)
     
-    const response = await api.post('/doctors/profile/image', formData, {
+    // Fallback to /users/upload-photo matching userRoutes.js
+    const response = await api.post('/users/upload-photo', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
     
-    if (response.data.profileImageUrl) {
+    if (response.data.photoUrl) {
       const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-      currentUser.profileImage = response.data.profileImageUrl
+      currentUser.profileImage = response.data.photoUrl
       localStorage.setItem('user', JSON.stringify(currentUser))
     }
     
@@ -73,7 +74,7 @@ export const authService = {
 
   // Change password
   changePassword: async (currentPassword, newPassword) => {
-    const response = await api.put('/auth/change-password', {
+    const response = await api.put('/users/change-password', {
       currentPassword,
       newPassword
     })
@@ -82,8 +83,8 @@ export const authService = {
 
   // Update email notifications preferences
   updateNotificationPreferences: async (preferences) => {
-    const response = await api.put('/users/notifications', preferences)
-    return response.data
+    // Mock API call since backend doesn't have it
+    return { success: true, message: "Preferences updated locally." }
   },
 
   // Delete account

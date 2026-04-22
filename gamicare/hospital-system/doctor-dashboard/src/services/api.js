@@ -44,11 +44,11 @@ api.interceptors.response.use(
     }
     
     // Handle specific error messages
-    const errorMessage = error.response?.data?.message || 
-                        error.response?.data?.error || 
-                        'Something went wrong'
+    error.message = error.response?.data?.message || 
+                   error.response?.data?.error || 
+                   'Something went wrong'
     
-    throw new Error(errorMessage)
+    return Promise.reject(error)
   }
 )
 
