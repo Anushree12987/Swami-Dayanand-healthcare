@@ -9,15 +9,16 @@ import Contact from './pages/Contact';
 import Doctors from './pages/Doctors';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import PatientDashboard from './pages/PatientDashboard';
 import BookAppointment from './pages/BookAppointment';
 import MyAppointments from './pages/MyAppointments';
 import SymptomChecker from './pages/SymptomChecker';
 import Profile from './pages/Profile';
 import ConsultationRoom from './pages/ConsultationRoom';
-import EsewaPayment from './pages/EsewaPayment';
 import PaymentSuccess from './pages/PaymentSuccess';
 import PaymentFailure from './pages/PaymentFailure';
+import Notifications from './pages/Notifications';
 
 // Layouts
 import WebsiteLayout from './components/layouts/WebsiteLayout';
@@ -30,7 +31,19 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <Toaster position="top-right" />
+        <Toaster 
+          position="top-right" 
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#333',
+              color: '#fff',
+            },
+          }}
+          containerStyle={{ top: 20 }}
+          reverseOrder={false}
+          gutter={8}
+        />
         <Routes>
           {/* Public Routes */}
           <Route element={<WebsiteLayout />}>
@@ -40,6 +53,7 @@ function App() {
             <Route path="/doctors" element={<Doctors />} />
             <Route path="/symptom-checker" element={<SymptomChecker />} /> 
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/register" element={<Register />} />
           </Route>
 
@@ -51,9 +65,9 @@ function App() {
             <Route path="appointments" element={<MyAppointments />} />
             <Route path="profile" element={<Profile />} />
             <Route path="consultation/:roomID" element={<ConsultationRoom />} />
-            <Route path="pay-esewa/:appointmentId" element={<EsewaPayment />} />
             <Route path="payment-success" element={<PaymentSuccess />} />
             <Route path="payment-failure" element={<PaymentFailure />} />
+            <Route path="notifications" element={<Notifications />} />
           </Route>
 
           {/* Redirect */}
